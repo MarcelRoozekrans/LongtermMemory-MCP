@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "longterm-memory": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "env": {
+        "MEMORY_DB_PATH": "./data/test-memories.db"
+      }
+    }
+  }
+}

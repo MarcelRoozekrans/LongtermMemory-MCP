@@ -1,0 +1,20 @@
+node_modules/
+dist/
+data/
+*.db
+*.db-journal
+.env
+
+# Model cache
+.cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+
+# IDE
+.vscode/
+.idea/
