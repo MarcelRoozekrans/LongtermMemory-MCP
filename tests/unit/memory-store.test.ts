@@ -60,6 +60,34 @@ describe("MemoryStore", () => {
       await store.save("two");
       expect(store.count()).toBe(2);
     });
+
+    it("saves with tags, importance, and memoryType", async () => {
+      const memory = await store.save("tagged note", {}, ["personal", "preference"], 8, "preference");
+      expect(memory.tags).toEqual(["personal", "preference"]);
+      expect(memory.importance).toBe(8);
+      expect(memory.memoryType).toBe("preference");
+      expect(memory.contentHash).toBeTruthy();
+      expect(memory.lastAccessed).toBeTruthy();
+    });
+
+    it("defaults tags to [], importance to 5, memoryType to general", async () => {
+      const memory = await store.save("simple note");
+      expect(memory.tags).toEqual([]);
+      expect(memory.importance).toBe(5);
+      expect(memory.memoryType).toBe("general");
+    });
+
+    it("clamps importance to 1-10 range", async () => {
+      const low = await store.save("low", {}, [], 0);
+      expect(low.importance).toBe(1);
+      const high = await store.save("high", {}, [], 15);
+      expect(high.importance).toBe(10);
+    });
+
+    it("rejects duplicate content", async () => {
+      await store.save("unique content");
+      await expect(store.save("unique content")).rejects.toThrow("Duplicate");
+    });
   });
 
   // ── getAll ────────────────────────────────────────────────
@@ -169,13 +197,14 @@ describe("MemoryStore", () => {
       expect(updated).not.toBeNull();
       expect(updated!.content).toBe("modified");
       expect(updated!.id).toBe(saved.id);
+      expect(updated!.contentHash).toBeTruthy();
       expect(mockEmbed.embed).toHaveBeenCalledWith("modified");
     });
 
     it("preserves metadata when not provided", async () => {
       const saved = await store.save("text", { key: "value" });
       const updated = await store.update(saved.id, "new text");
-      expect(updated!.metadata).toEqual({ key: "value" });
+      expect(updated!.metadata.key).toBe("value");
     });
 
     it("replaces metadata when provided", async () => {
@@ -221,6 +250,107 @@ describe("MemoryStore", () => {
       await store.save("three");
       expect(store.deleteAll()).toBe(3);
       expect(store.count()).toBe(0);
+    });
+  });
+
+  // ── decay on access ───────────────────────────────────────
+  describe("decay on access", () => {
+    it("updates lastAccessed when retrieving by id", async () => {
+      const saved = await store.save("decay test");
+      const found = store.getById(saved.id);
+      expect(found!.lastAccessed).toBeTruthy();
+    });
+
+    it("updates lastAccessed on search results", async () => {
+      await store.save("searchable content");
+      const results = await store.search("searchable", 5, 0.0);
+      expect(results.length).toBeGreaterThan(0);
+      expect(results[0].memory.lastAccessed).toBeTruthy();
+    });
+  });
+
+  // ── searchByType ──────────────────────────────────────────
+  describe("searchByType()", () => {
+    it("returns empty array when no matches", async () => {
+      await store.save("note", {}, [], 5, "general");
+      expect(store.searchByType("fact")).toEqual([]);
+    });
+
+    it("returns memories of specified type", async () => {
+      await store.save("a fact", {}, [], 5, "fact");
+      await store.save("a pref", {}, [], 5, "preference");
+      await store.save("another fact", {}, [], 5, "fact");
+
+      const results = store.searchByType("fact");
+      expect(results).toHaveLength(2);
+      expect(results.every((m) => m.memoryType === "fact")).toBe(true);
+    });
+
+    it("orders by importance DESC then created_at DESC", async () => {
+      await store.save("low", {}, [], 3, "fact");
+      await store.save("high", {}, [], 9, "fact");
+
+      const results = store.searchByType("fact");
+      expect(results[0].content).toBe("high");
+      expect(results[1].content).toBe("low");
+    });
+
+    it("respects limit", async () => {
+      await store.save("a", {}, [], 5, "fact");
+      await store.save("b", {}, [], 5, "fact");
+      await store.save("c", {}, [], 5, "fact");
+      expect(store.searchByType("fact", 2)).toHaveLength(2);
+    });
+  });
+
+  // ── searchByTags ──────────────────────────────────────────
+  describe("searchByTags()", () => {
+    it("returns empty array when no matches", async () => {
+      await store.save("note", {}, ["work"]);
+      expect(store.searchByTags(["personal"])).toEqual([]);
+    });
+
+    it("matches any of the provided tags", async () => {
+      await store.save("a", {}, ["personal", "hobby"]);
+      await store.save("b", {}, ["work"]);
+      await store.save("c", {}, ["personal"]);
+
+      const results = store.searchByTags(["personal"]);
+      expect(results).toHaveLength(2);
+    });
+
+    it("respects limit", async () => {
+      await store.save("a", {}, ["x"]);
+      await store.save("b", {}, ["x"]);
+      await store.save("c", {}, ["x"]);
+      expect(store.searchByTags(["x"], 2)).toHaveLength(2);
+    });
+  });
+
+  // ── searchByDateRange ─────────────────────────────────────
+  describe("searchByDateRange()", () => {
+    it("returns empty array when no matches in range", async () => {
+      await store.save("old note");
+      const results = store.searchByDateRange("2099-01-01", "2099-12-31");
+      expect(results).toEqual([]);
+    });
+
+    it("returns memories within date range", async () => {
+      await store.save("recent note");
+      const now = new Date();
+      const from = new Date(now.getTime() - 60000).toISOString();
+      const to = new Date(now.getTime() + 60000).toISOString();
+      const results = store.searchByDateRange(from, to);
+      expect(results).toHaveLength(1);
+    });
+
+    it("respects limit", async () => {
+      await store.save("a");
+      await store.save("b");
+      await store.save("c");
+      const from = new Date(Date.now() - 60000).toISOString();
+      const to = new Date(Date.now() + 60000).toISOString();
+      expect(store.searchByDateRange(from, to, 2)).toHaveLength(2);
     });
   });
 

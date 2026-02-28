@@ -3,7 +3,6 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createMockEmbeddings } from "../helpers/mock-embeddings.js";
 
-// Mock fs so MemoryStore never touches disk
 vi.mock("fs", () => ({
   default: {
     existsSync: vi.fn().mockReturnValue(false),
@@ -20,7 +19,6 @@ vi.mock("fs", () => ({
 import { createServer } from "../../src/server.js";
 import { MemoryStore } from "../../src/memory-store.js";
 
-/** Helper to extract the text from a tool result. */
 function getText(result: Awaited<ReturnType<Client["callTool"]>>): string {
   return (result.content as Array<{ type: string; text: string }>)[0].text;
 }
@@ -51,16 +49,21 @@ describe("MCP Server Integration", () => {
   // ── tool listing ────────────────────────────────────────────
 
   describe("tool listing", () => {
-    it("exposes all 6 tools", async () => {
+    it("exposes all 11 tools", async () => {
       const { tools } = await client.listTools();
       const names = tools.map((t) => t.name).sort();
       expect(names).toEqual([
+        "create_backup",
         "delete_all_memories",
         "delete_memory",
         "get_all_memories",
         "memory_stats",
         "save_memory",
+        "search_by_date_range",
+        "search_by_tags",
+        "search_by_type",
         "search_memory",
+        "update_memory",
       ]);
     });
   });
@@ -68,10 +71,10 @@ describe("MCP Server Integration", () => {
   // ── save_memory ─────────────────────────────────────────────
 
   describe("save_memory", () => {
-    it("saves and returns status with id", async () => {
+    it("saves and returns status with id and new fields", async () => {
       const result = await client.callTool({
         name: "save_memory",
-        arguments: { content: "Remember this fact" },
+        arguments: { content: "Remember this fact", tags: ["test"], importance: 7, memory_type: "fact" },
       });
 
       expect(result.isError).toBeFalsy();
@@ -79,6 +82,9 @@ describe("MCP Server Integration", () => {
       expect(parsed.status).toBe("saved");
       expect(parsed.id).toBeTruthy();
       expect(parsed.preview).toBe("Remember this fact");
+      expect(parsed.tags).toEqual(["test"]);
+      expect(parsed.importance).toBe(7);
+      expect(parsed.memoryType).toBe("fact");
     });
 
     it("truncates long content in preview", async () => {
@@ -100,6 +106,21 @@ describe("MCP Server Integration", () => {
       });
       expect(result.isError).toBeFalsy();
     });
+
+    it("rejects duplicate content", async () => {
+      await client.callTool({
+        name: "save_memory",
+        arguments: { content: "unique fact" },
+      });
+
+      const result = await client.callTool({
+        name: "save_memory",
+        arguments: { content: "unique fact" },
+      });
+
+      expect(result.isError).toBe(true);
+      expect(getText(result)).toContain("Duplicate");
+    });
   });
 
   // ── search_memory ───────────────────────────────────────────
@@ -120,7 +141,6 @@ describe("MCP Server Integration", () => {
         arguments: { content },
       });
 
-      // Search with the exact same text — deterministic embeddings give cosine similarity = 1.0
       const result = await client.callTool({
         name: "search_memory",
         arguments: { query: content, limit: 5, threshold: 0.0 },
@@ -165,6 +185,119 @@ describe("MCP Server Integration", () => {
     });
   });
 
+  // ── update_memory ───────────────────────────────────────────
+
+  describe("update_memory", () => {
+    it("updates an existing memory", async () => {
+      const saveResult = await client.callTool({
+        name: "save_memory",
+        arguments: { content: "original", tags: ["old"] },
+      });
+      const id = JSON.parse(getText(saveResult)).id;
+
+      const updateResult = await client.callTool({
+        name: "update_memory",
+        arguments: { id, content: "modified", tags: ["new"], importance: 8 },
+      });
+
+      expect(updateResult.isError).toBeFalsy();
+      const parsed = JSON.parse(getText(updateResult));
+      expect(parsed.status).toBe("updated");
+      expect(parsed.tags).toEqual(["new"]);
+      expect(parsed.importance).toBe(8);
+    });
+
+    it("reports not found for non-existent id", async () => {
+      const result = await client.callTool({
+        name: "update_memory",
+        arguments: { id: "00000000-0000-0000-0000-000000000000", content: "new" },
+      });
+      expect(getText(result)).toContain("not found");
+    });
+  });
+
+  // ── search_by_type ──────────────────────────────────────────
+
+  describe("search_by_type", () => {
+    it("returns memories of specified type", async () => {
+      await client.callTool({
+        name: "save_memory",
+        arguments: { content: "a fact", memory_type: "fact" },
+      });
+      await client.callTool({
+        name: "save_memory",
+        arguments: { content: "a preference", memory_type: "preference" },
+      });
+
+      const result = await client.callTool({
+        name: "search_by_type",
+        arguments: { memory_type: "fact" },
+      });
+
+      const parsed = JSON.parse(getText(result));
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0].memoryType).toBe("fact");
+    });
+
+    it("returns no-results message when empty", async () => {
+      const result = await client.callTool({
+        name: "search_by_type",
+        arguments: { memory_type: "ephemeral" },
+      });
+      expect(getText(result)).toContain("No memories of type");
+    });
+  });
+
+  // ── search_by_tags ──────────────────────────────────────────
+
+  describe("search_by_tags", () => {
+    it("finds memories with matching tags", async () => {
+      await client.callTool({
+        name: "save_memory",
+        arguments: { content: "tagged note", tags: ["project-x", "backend"] },
+      });
+
+      const result = await client.callTool({
+        name: "search_by_tags",
+        arguments: { tags: ["project-x"] },
+      });
+
+      const parsed = JSON.parse(getText(result));
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0].content).toBe("tagged note");
+    });
+  });
+
+  // ── search_by_date_range ────────────────────────────────────
+
+  describe("search_by_date_range", () => {
+    it("finds memories within range", async () => {
+      await client.callTool({
+        name: "save_memory",
+        arguments: { content: "recent" },
+      });
+
+      const from = new Date(Date.now() - 60000).toISOString();
+      const to = new Date(Date.now() + 60000).toISOString();
+
+      const result = await client.callTool({
+        name: "search_by_date_range",
+        arguments: { date_from: from, date_to: to },
+      });
+
+      const parsed = JSON.parse(getText(result));
+      expect(parsed).toHaveLength(1);
+    });
+
+    it("returns no-results message for empty range", async () => {
+      const result = await client.callTool({
+        name: "search_by_date_range",
+        arguments: { date_from: "2099-01-01", date_to: "2099-12-31" },
+      });
+      expect(getText(result)).toContain("No memories found");
+    });
+  });
+
   // ── delete_memory ───────────────────────────────────────────
 
   describe("delete_memory", () => {
@@ -189,7 +322,6 @@ describe("MCP Server Integration", () => {
       });
       expect(getText(deleteResult)).toContain("deleted successfully");
 
-      // Verify it's gone
       const allResult = await client.callTool({
         name: "get_all_memories",
         arguments: {},
@@ -236,6 +368,18 @@ describe("MCP Server Integration", () => {
         arguments: {},
       });
       expect(JSON.parse(getText(result)).totalMemories).toBe(2);
+    });
+  });
+
+  // ── create_backup ───────────────────────────────────────────
+
+  describe("create_backup", () => {
+    it("reports backup not configured (no BackupManager in test)", async () => {
+      const result = await client.callTool({
+        name: "create_backup",
+        arguments: {},
+      });
+      expect(getText(result)).toContain("not configured");
     });
   });
 });

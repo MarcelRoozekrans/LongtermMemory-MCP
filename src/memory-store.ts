@@ -1,8 +1,10 @@
 import initSqlJs, { type Database as SqlJsDatabase } from "sql.js";
-import { randomUUID } from "crypto";
+import { randomUUID, createHash } from "crypto";
 import path from "path";
 import fs from "fs";
 import { LocalEmbeddings, cosineSimilarity } from "./embeddings.js";
+import { DecayEngine } from "./decay.js";
+import { BackupManager } from "./backup.js";
 import type { Embedder, Memory, MemoryRow, MemoryStoreConfig, SearchResult } from "./types.js";
 
 /**
@@ -13,11 +15,18 @@ export class MemoryStore {
   private db!: SqlJsDatabase;
   private dbPath: string;
   private embeddings: Embedder;
+  private decay = new DecayEngine();
   private initialized = false;
+  private backup?: BackupManager;
 
-  constructor(config?: Partial<MemoryStoreConfig>, embedder?: Embedder) {
+  constructor(config?: Partial<MemoryStoreConfig>, embedder?: Embedder, backupManager?: BackupManager) {
     this.dbPath = config?.dbPath ?? path.join(process.cwd(), "data", "memories.db");
     this.embeddings = embedder ?? new LocalEmbeddings();
+    this.backup = backupManager;
+  }
+
+  private contentHash(content: string): string {
+    return createHash("sha256").update(content).digest("hex");
   }
 
   /**
@@ -50,15 +59,22 @@ export class MemoryStore {
       CREATE TABLE IF NOT EXISTS memories (
         id TEXT PRIMARY KEY,
         content TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
         metadata TEXT NOT NULL DEFAULT '{}',
         embedding TEXT NOT NULL,
+        tags TEXT NOT NULL DEFAULT '[]',
+        importance REAL NOT NULL DEFAULT 5.0,
+        memory_type TEXT NOT NULL DEFAULT 'general',
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        last_accessed TEXT NOT NULL
       )
     `);
-    this.db.run(`
-      CREATE INDEX IF NOT EXISTS idx_memories_created_at ON memories(created_at)
-    `);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memories_created_at ON memories(created_at)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memories_content_hash ON memories(content_hash)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memories_memory_type ON memories(memory_type)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memories_importance ON memories(importance)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memories_last_accessed ON memories(last_accessed)`);
   }
 
   /** Persist the in-memory database to disk. */
@@ -71,18 +87,39 @@ export class MemoryStore {
   /**
    * Save a new memory with auto-generated embedding.
    */
-  async save(content: string, metadata: Record<string, unknown> = {}): Promise<Memory> {
+  async save(
+    content: string,
+    metadata: Record<string, unknown> = {},
+    tags: string[] = [],
+    importance: number = 5,
+    memoryType: string = "general",
+  ): Promise<Memory> {
+    const clampedImportance = Math.max(1, Math.min(10, importance));
+    const hash = this.contentHash(content);
+
+    // Dedup check
+    const dupStmt = this.db.prepare(`SELECT id FROM memories WHERE content_hash = ?`);
+    dupStmt.bind([hash]);
+    if (dupStmt.step()) {
+      const existingId = (dupStmt.getAsObject() as { id: string }).id;
+      dupStmt.free();
+      throw new Error(`Duplicate content detected (existing memory: ${existingId})`);
+    }
+    dupStmt.free();
+
     const id = randomUUID();
     const embedding = await this.embeddings.embed(content);
     const now = new Date().toISOString();
 
     this.db.run(
-      `INSERT INTO memories (id, content, metadata, embedding, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, content, JSON.stringify(metadata), JSON.stringify(embedding), now, now]
+      `INSERT INTO memories (id, content, content_hash, metadata, embedding, tags, importance, memory_type, created_at, updated_at, last_accessed)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, content, hash, JSON.stringify(metadata), JSON.stringify(embedding), JSON.stringify(tags), clampedImportance, memoryType, now, now, now]
     );
     this.persist();
+    this.maybeBackup();
 
-    return { id, content, metadata, embedding, createdAt: now, updatedAt: now };
+    return { id, content, contentHash: hash, metadata, embedding, tags, importance: clampedImportance, memoryType, createdAt: now, updatedAt: now, lastAccessed: now };
   }
 
   /**
@@ -90,7 +127,7 @@ export class MemoryStore {
    */
   getAll(limit = 100, offset = 0): Memory[] {
     const stmt = this.db.prepare(
-      `SELECT id, content, metadata, embedding, created_at, updated_at FROM memories ORDER BY created_at DESC LIMIT ? OFFSET ?`
+      `SELECT id, content, content_hash, metadata, embedding, tags, importance, memory_type, created_at, updated_at, last_accessed FROM memories ORDER BY created_at DESC LIMIT ? OFFSET ?`
     );
     stmt.bind([limit, offset]);
 
@@ -112,19 +149,24 @@ export class MemoryStore {
     const queryEmbedding = await this.embeddings.embed(query);
 
     const stmt = this.db.prepare(
-      `SELECT id, content, metadata, embedding, created_at, updated_at FROM memories`
+      `SELECT id, content, content_hash, metadata, embedding, tags, importance, memory_type, created_at, updated_at, last_accessed FROM memories`
     );
 
-    const scored: SearchResult[] = [];
+    const candidates: { memory: Memory; score: number }[] = [];
     while (stmt.step()) {
       const row = stmt.getAsObject() as unknown as MemoryRow;
       const memory = this.rowToMemory(row);
       const score = cosineSimilarity(queryEmbedding, memory.embedding);
       if (score >= threshold) {
-        scored.push({ memory, score });
+        candidates.push({ memory, score });
       }
     }
     stmt.free();
+
+    const scored: SearchResult[] = candidates.map(({ memory, score }) => {
+      const updated = this.applyDecayAndReinforcement(memory);
+      return { memory: updated, score };
+    });
 
     return scored
       .sort((a, b) => b.score - a.score)
@@ -136,14 +178,15 @@ export class MemoryStore {
    */
   getById(id: string): Memory | null {
     const stmt = this.db.prepare(
-      `SELECT id, content, metadata, embedding, created_at, updated_at FROM memories WHERE id = ?`
+      `SELECT id, content, content_hash, metadata, embedding, tags, importance, memory_type, created_at, updated_at, last_accessed FROM memories WHERE id = ?`
     );
     stmt.bind([id]);
 
     if (stmt.step()) {
       const row = stmt.getAsObject() as unknown as MemoryRow;
       stmt.free();
-      return this.rowToMemory(row);
+      const memory = this.rowToMemory(row);
+      return this.applyDecayAndReinforcement(memory);
     }
     stmt.free();
     return null;
@@ -152,21 +195,116 @@ export class MemoryStore {
   /**
    * Update a memory's content and re-generate its embedding.
    */
-  async update(id: string, content: string, metadata?: Record<string, unknown>): Promise<Memory | null> {
+  async update(
+    id: string,
+    content?: string,
+    metadata?: Record<string, unknown>,
+    tags?: string[],
+    importance?: number,
+    memoryType?: string,
+  ): Promise<Memory | null> {
     const existing = this.getById(id);
     if (!existing) return null;
 
-    const embedding = await this.embeddings.embed(content);
-    const now = new Date().toISOString();
+    const newContent = content ?? existing.content;
     const newMetadata = metadata ?? existing.metadata;
+    const newTags = tags ?? existing.tags;
+    const newImportance = importance != null ? Math.max(1, Math.min(10, importance)) : existing.importance;
+    const newMemoryType = memoryType ?? existing.memoryType;
+    const now = new Date().toISOString();
+
+    let newHash = existing.contentHash;
+    let newEmbedding = existing.embedding;
+
+    if (content != null && content !== existing.content) {
+      newHash = this.contentHash(content);
+
+      // Dedup check against other memories
+      const dupStmt = this.db.prepare(`SELECT id FROM memories WHERE content_hash = ? AND id != ?`);
+      dupStmt.bind([newHash, id]);
+      if (dupStmt.step()) {
+        const existingId = (dupStmt.getAsObject() as { id: string }).id;
+        dupStmt.free();
+        throw new Error(`Duplicate content detected (existing memory: ${existingId})`);
+      }
+      dupStmt.free();
+
+      newEmbedding = await this.embeddings.embed(content);
+    }
 
     this.db.run(
-      `UPDATE memories SET content = ?, metadata = ?, embedding = ?, updated_at = ? WHERE id = ?`,
-      [content, JSON.stringify(newMetadata), JSON.stringify(embedding), now, id]
+      `UPDATE memories SET content = ?, content_hash = ?, metadata = ?, embedding = ?, tags = ?, importance = ?, memory_type = ?, updated_at = ?, last_accessed = ?
+       WHERE id = ?`,
+      [newContent, newHash, JSON.stringify(newMetadata), JSON.stringify(newEmbedding), JSON.stringify(newTags), newImportance, newMemoryType, now, now, id]
     );
     this.persist();
 
-    return { id, content, metadata: newMetadata, embedding, createdAt: existing.createdAt, updatedAt: now };
+    return {
+      id, content: newContent, contentHash: newHash, metadata: newMetadata, embedding: newEmbedding,
+      tags: newTags, importance: newImportance, memoryType: newMemoryType,
+      createdAt: existing.createdAt, updatedAt: now, lastAccessed: now,
+    };
+  }
+
+  /**
+   * Search memories by their type (e.g. "fact", "preference", "general").
+   */
+  searchByType(memoryType: string, limit = 20): Memory[] {
+    const stmt = this.db.prepare(
+      `SELECT id, content, content_hash, metadata, embedding, tags, importance, memory_type, created_at, updated_at, last_accessed
+       FROM memories WHERE memory_type = ? ORDER BY importance DESC, created_at DESC LIMIT ?`
+    );
+    stmt.bind([memoryType, limit]);
+
+    const results: Memory[] = [];
+    while (stmt.step()) {
+      const row = stmt.getAsObject() as unknown as MemoryRow;
+      results.push(this.rowToMemory(row));
+    }
+    stmt.free();
+    return results;
+  }
+
+  /**
+   * Search memories that have any of the provided tags.
+   */
+  searchByTags(tags: string[], limit = 20): Memory[] {
+    const conditions = tags.map(() => `tags LIKE ?`).join(" OR ");
+    const params = tags.map((tag) => `%"${tag}"%`);
+
+    const stmt = this.db.prepare(
+      `SELECT id, content, content_hash, metadata, embedding, tags, importance, memory_type, created_at, updated_at, last_accessed
+       FROM memories WHERE ${conditions} ORDER BY importance DESC, created_at DESC LIMIT ?`
+    );
+    stmt.bind([...params, limit]);
+
+    const results: Memory[] = [];
+    while (stmt.step()) {
+      const row = stmt.getAsObject() as unknown as MemoryRow;
+      results.push(this.rowToMemory(row));
+    }
+    stmt.free();
+    return results;
+  }
+
+  /**
+   * Search memories created within a date range.
+   */
+  searchByDateRange(dateFrom: string, dateTo?: string, limit = 50): Memory[] {
+    const to = dateTo ?? new Date().toISOString();
+    const stmt = this.db.prepare(
+      `SELECT id, content, content_hash, metadata, embedding, tags, importance, memory_type, created_at, updated_at, last_accessed
+       FROM memories WHERE created_at BETWEEN ? AND ? ORDER BY created_at DESC LIMIT ?`
+    );
+    stmt.bind([dateFrom, to, limit]);
+
+    const results: Memory[] = [];
+    while (stmt.step()) {
+      const row = stmt.getAsObject() as unknown as MemoryRow;
+      results.push(this.rowToMemory(row));
+    }
+    stmt.free();
+    return results;
   }
 
   /**
@@ -205,6 +343,19 @@ export class MemoryStore {
   }
 
   /**
+   * Trigger a manual backup. Returns null if no BackupManager is configured.
+   */
+  createBackup(): { backupPath: string; memoriesBackedUp: number; timestamp: string } | null {
+    if (!this.backup) return null;
+    const allMemories = this.getAll(10000, 0);
+    const exportable = allMemories.map((m) => ({
+      id: m.id, content: m.content, tags: m.tags, importance: m.importance,
+      memoryType: m.memoryType, metadata: m.metadata, createdAt: m.createdAt, updatedAt: m.updatedAt,
+    }));
+    return this.backup.createBackup(exportable);
+  }
+
+  /**
    * Close the database connection.
    */
   close(): void {
@@ -212,14 +363,71 @@ export class MemoryStore {
     this.db.close();
   }
 
+  private maybeBackup(): void {
+    if (!this.backup) return;
+    const memCount = this.count();
+    if (this.backup.shouldBackup(memCount)) {
+      const allMemories = this.getAll(10000, 0);
+      const exportable = allMemories.map((m) => ({
+        id: m.id, content: m.content, tags: m.tags, importance: m.importance,
+        memoryType: m.memoryType, metadata: m.metadata, createdAt: m.createdAt, updatedAt: m.updatedAt,
+      }));
+      this.backup.createBackup(exportable);
+    }
+  }
+
+  private applyDecayAndReinforcement(memory: Memory): Memory {
+    if (this.decay.shouldProtect(memory.tags)) return memory;
+
+    const now = new Date();
+    const lastAccessed = new Date(memory.lastAccessed);
+    const daysIdle = Math.max(0, (now.getTime() - lastAccessed.getTime()) / (1000 * 60 * 60 * 24));
+
+    let currentImportance = memory.importance;
+
+    // Decay
+    const decayed = this.decay.computeDecay(currentImportance, daysIdle, memory.memoryType);
+    if (this.decay.shouldWriteDecay(currentImportance, decayed)) {
+      currentImportance = decayed;
+      this.db.run(`UPDATE memories SET importance = ? WHERE id = ?`, [currentImportance, memory.id]);
+    }
+
+    // Reinforcement
+    const currentAccum = (memory.metadata as Record<string, unknown>).reinforcement_accum as number ?? 0;
+    const reinforcement = this.decay.computeReinforcement(currentImportance, currentAccum);
+
+    const newMeta = { ...memory.metadata, reinforcement_accum: reinforcement.newAccum };
+    if (reinforcement.shouldWrite && reinforcement.newImportance != null) {
+      currentImportance = reinforcement.newImportance;
+      this.db.run(
+        `UPDATE memories SET importance = ?, metadata = ? WHERE id = ?`,
+        [currentImportance, JSON.stringify(newMeta), memory.id],
+      );
+    } else {
+      this.db.run(`UPDATE memories SET metadata = ? WHERE id = ?`, [JSON.stringify(newMeta), memory.id]);
+    }
+
+    // Update lastAccessed
+    const nowIso = now.toISOString();
+    this.db.run(`UPDATE memories SET last_accessed = ? WHERE id = ?`, [nowIso, memory.id]);
+    this.persist();
+
+    return { ...memory, importance: currentImportance, metadata: newMeta, lastAccessed: nowIso };
+  }
+
   private rowToMemory(row: MemoryRow): Memory {
     return {
       id: row.id,
       content: row.content,
+      contentHash: row.content_hash,
       metadata: JSON.parse(row.metadata),
       embedding: JSON.parse(row.embedding),
+      tags: JSON.parse(row.tags),
+      importance: row.importance,
+      memoryType: row.memory_type,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      lastAccessed: row.last_accessed,
     };
   }
 }
