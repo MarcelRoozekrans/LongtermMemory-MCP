@@ -243,6 +243,67 @@ export class MemoryStore {
   }
 
   /**
+   * Search memories by their type (e.g. "fact", "preference", "general").
+   */
+  searchByType(memoryType: string, limit = 20): Memory[] {
+    const stmt = this.db.prepare(
+      `SELECT id, content, content_hash, metadata, embedding, tags, importance, memory_type, created_at, updated_at, last_accessed
+       FROM memories WHERE memory_type = ? ORDER BY importance DESC, created_at DESC LIMIT ?`
+    );
+    stmt.bind([memoryType, limit]);
+
+    const results: Memory[] = [];
+    while (stmt.step()) {
+      const row = stmt.getAsObject() as unknown as MemoryRow;
+      results.push(this.rowToMemory(row));
+    }
+    stmt.free();
+    return results;
+  }
+
+  /**
+   * Search memories that have any of the provided tags.
+   */
+  searchByTags(tags: string[], limit = 20): Memory[] {
+    const conditions = tags.map(() => `tags LIKE ?`).join(" OR ");
+    const params = tags.map((tag) => `%"${tag}"%`);
+
+    const stmt = this.db.prepare(
+      `SELECT id, content, content_hash, metadata, embedding, tags, importance, memory_type, created_at, updated_at, last_accessed
+       FROM memories WHERE ${conditions} ORDER BY importance DESC, created_at DESC LIMIT ?`
+    );
+    stmt.bind([...params, limit]);
+
+    const results: Memory[] = [];
+    while (stmt.step()) {
+      const row = stmt.getAsObject() as unknown as MemoryRow;
+      results.push(this.rowToMemory(row));
+    }
+    stmt.free();
+    return results;
+  }
+
+  /**
+   * Search memories created within a date range.
+   */
+  searchByDateRange(dateFrom: string, dateTo?: string, limit = 50): Memory[] {
+    const to = dateTo ?? new Date().toISOString();
+    const stmt = this.db.prepare(
+      `SELECT id, content, content_hash, metadata, embedding, tags, importance, memory_type, created_at, updated_at, last_accessed
+       FROM memories WHERE created_at BETWEEN ? AND ? ORDER BY created_at DESC LIMIT ?`
+    );
+    stmt.bind([dateFrom, to, limit]);
+
+    const results: Memory[] = [];
+    while (stmt.step()) {
+      const row = stmt.getAsObject() as unknown as MemoryRow;
+      results.push(this.rowToMemory(row));
+    }
+    stmt.free();
+    return results;
+  }
+
+  /**
    * Delete a memory by ID.
    */
   delete(id: string): boolean {

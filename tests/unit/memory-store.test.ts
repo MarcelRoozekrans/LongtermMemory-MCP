@@ -269,6 +269,91 @@ describe("MemoryStore", () => {
     });
   });
 
+  // ── searchByType ──────────────────────────────────────────
+  describe("searchByType()", () => {
+    it("returns empty array when no matches", async () => {
+      await store.save("note", {}, [], 5, "general");
+      expect(store.searchByType("fact")).toEqual([]);
+    });
+
+    it("returns memories of specified type", async () => {
+      await store.save("a fact", {}, [], 5, "fact");
+      await store.save("a pref", {}, [], 5, "preference");
+      await store.save("another fact", {}, [], 5, "fact");
+
+      const results = store.searchByType("fact");
+      expect(results).toHaveLength(2);
+      expect(results.every((m) => m.memoryType === "fact")).toBe(true);
+    });
+
+    it("orders by importance DESC then created_at DESC", async () => {
+      await store.save("low", {}, [], 3, "fact");
+      await store.save("high", {}, [], 9, "fact");
+
+      const results = store.searchByType("fact");
+      expect(results[0].content).toBe("high");
+      expect(results[1].content).toBe("low");
+    });
+
+    it("respects limit", async () => {
+      await store.save("a", {}, [], 5, "fact");
+      await store.save("b", {}, [], 5, "fact");
+      await store.save("c", {}, [], 5, "fact");
+      expect(store.searchByType("fact", 2)).toHaveLength(2);
+    });
+  });
+
+  // ── searchByTags ──────────────────────────────────────────
+  describe("searchByTags()", () => {
+    it("returns empty array when no matches", async () => {
+      await store.save("note", {}, ["work"]);
+      expect(store.searchByTags(["personal"])).toEqual([]);
+    });
+
+    it("matches any of the provided tags", async () => {
+      await store.save("a", {}, ["personal", "hobby"]);
+      await store.save("b", {}, ["work"]);
+      await store.save("c", {}, ["personal"]);
+
+      const results = store.searchByTags(["personal"]);
+      expect(results).toHaveLength(2);
+    });
+
+    it("respects limit", async () => {
+      await store.save("a", {}, ["x"]);
+      await store.save("b", {}, ["x"]);
+      await store.save("c", {}, ["x"]);
+      expect(store.searchByTags(["x"], 2)).toHaveLength(2);
+    });
+  });
+
+  // ── searchByDateRange ─────────────────────────────────────
+  describe("searchByDateRange()", () => {
+    it("returns empty array when no matches in range", async () => {
+      await store.save("old note");
+      const results = store.searchByDateRange("2099-01-01", "2099-12-31");
+      expect(results).toEqual([]);
+    });
+
+    it("returns memories within date range", async () => {
+      await store.save("recent note");
+      const now = new Date();
+      const from = new Date(now.getTime() - 60000).toISOString();
+      const to = new Date(now.getTime() + 60000).toISOString();
+      const results = store.searchByDateRange(from, to);
+      expect(results).toHaveLength(1);
+    });
+
+    it("respects limit", async () => {
+      await store.save("a");
+      await store.save("b");
+      await store.save("c");
+      const from = new Date(Date.now() - 60000).toISOString();
+      const to = new Date(Date.now() + 60000).toISOString();
+      expect(store.searchByDateRange(from, to, 2)).toHaveLength(2);
+    });
+  });
+
   // ── count ─────────────────────────────────────────────────
 
   describe("count()", () => {
