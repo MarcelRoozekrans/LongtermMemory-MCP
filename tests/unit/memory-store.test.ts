@@ -60,6 +60,34 @@ describe("MemoryStore", () => {
       await store.save("two");
       expect(store.count()).toBe(2);
     });
+
+    it("saves with tags, importance, and memoryType", async () => {
+      const memory = await store.save("tagged note", {}, ["personal", "preference"], 8, "preference");
+      expect(memory.tags).toEqual(["personal", "preference"]);
+      expect(memory.importance).toBe(8);
+      expect(memory.memoryType).toBe("preference");
+      expect(memory.contentHash).toBeTruthy();
+      expect(memory.lastAccessed).toBeTruthy();
+    });
+
+    it("defaults tags to [], importance to 5, memoryType to general", async () => {
+      const memory = await store.save("simple note");
+      expect(memory.tags).toEqual([]);
+      expect(memory.importance).toBe(5);
+      expect(memory.memoryType).toBe("general");
+    });
+
+    it("clamps importance to 1-10 range", async () => {
+      const low = await store.save("low", {}, [], 0);
+      expect(low.importance).toBe(1);
+      const high = await store.save("high", {}, [], 15);
+      expect(high.importance).toBe(10);
+    });
+
+    it("rejects duplicate content", async () => {
+      await store.save("unique content");
+      await expect(store.save("unique content")).rejects.toThrow("Duplicate");
+    });
   });
 
   // ── getAll ────────────────────────────────────────────────
@@ -169,6 +197,7 @@ describe("MemoryStore", () => {
       expect(updated).not.toBeNull();
       expect(updated!.content).toBe("modified");
       expect(updated!.id).toBe(saved.id);
+      expect(updated!.contentHash).toBeTruthy();
       expect(mockEmbed.embed).toHaveBeenCalledWith("modified");
     });
 
