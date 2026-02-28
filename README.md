@@ -109,6 +109,51 @@ Add to `claude_desktop_config.json`:
 }
 ```
 
+### VS Code / GitHub Copilot
+
+MCP is natively supported in VS Code 1.99+ with GitHub Copilot. Add a `.vscode/mcp.json` file to your project (or user settings):
+
+```json
+{
+  "servers": {
+    "longterm-memory": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "longterm-memory-mcp"]
+    }
+  }
+}
+```
+
+To use a per-project database with VS Code's `${workspaceFolder}` variable:
+
+```json
+{
+  "servers": {
+    "longterm-memory": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "longterm-memory-mcp"],
+      "env": {
+        "MEMORY_DB_PATH": "${workspaceFolder}/.memory/memories.db"
+      }
+    }
+  }
+}
+```
+
+> **Note**: Make sure Copilot Chat agent mode is enabled. Open Copilot Chat, switch to **Agent** mode, and the memory tools will appear automatically.
+
+### Agent Instructions
+
+The repo includes generic agent instructions that teach any AI agent how to use memory effectively (automatic recall, save patterns, deduplication). These work with any MCP-compatible client:
+
+| File | Purpose |
+|---|---|
+| `INSTRUCTIONS.md` | Generic instructions — reference from any AI agent or custom prompt |
+| `.github/copilot-instructions.md` | Auto-loaded by VS Code Copilot |
+| `skills/long-term-memory/SKILL.md` | Auto-loaded by Claude Code plugin |
+
 ## Database Location
 
 By default, memories are stored in a **shared, user-scoped location**:
@@ -212,6 +257,8 @@ src/                           — MCP server source
   backup.ts                    — BackupManager (auto-backup, JSON export, pruning)
   types.ts                     — TypeScript interfaces (Memory, Embedder, config types)
 
+INSTRUCTIONS.md                — Generic agent instructions (any MCP client)
+
 skills/                        — Claude Code plugin skill
   long-term-memory/SKILL.md    — Teaches Claude how to use memory effectively
 
@@ -219,6 +266,8 @@ skills/                        — Claude Code plugin skill
   plugin.json                  — Plugin manifest
   marketplace.json             — Marketplace manifest
 .mcp.json                      — Auto-configures MCP server on plugin install
+.vscode/mcp.json               — VS Code / Copilot MCP server config
+.github/copilot-instructions.md — Agent instructions auto-loaded by Copilot
 ```
 
 ## Benchmarks

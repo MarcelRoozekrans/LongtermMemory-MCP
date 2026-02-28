@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "longterm-memory": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "longterm-memory-mcp"]
+    }
+  }
+}
