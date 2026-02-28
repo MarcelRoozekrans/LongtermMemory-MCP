@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/v1.1.0...v1.1.1) (2026-02-28)
+
+
+### Bug Fixes
+
+* align skill dedup guidance with update_memory and server behavior ([43e26ed](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/43e26ed443a28da8d3681fbd947612d44af015a6))
+
 # [1.1.0](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/v1.0.0...v1.1.0) (2026-02-28)
 
 
