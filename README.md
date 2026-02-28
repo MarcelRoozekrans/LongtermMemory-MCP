@@ -221,12 +221,54 @@ skills/                        — Claude Code plugin skill
 .mcp.json                      — Auto-configures MCP server on plugin install
 ```
 
+## Benchmarks
+
+Run with `npm run bench`. Results from an in-memory store using mock embeddings (isolates store/SQLite performance from model latency):
+
+### Cosine Similarity
+
+| Operation | Throughput | Notes |
+|---|---|---|
+| Single computation (384-dim) | ~4.2M ops/s | Matches real embedding dimensions |
+| 128 dimensions | ~8.6M ops/s | |
+| 768 dimensions | ~2.4M ops/s | |
+| 1536 dimensions | ~1.3M ops/s | Scales linearly with dimensions |
+
+### Memory Store Operations
+
+| Operation | Throughput | Notes |
+|---|---|---|
+| Save (single) | ~1,120 ops/s | Includes embed + SQLite insert + dedup check |
+| Save 100 batch | ~18 ops/s | ~55ms per batch of 100 |
+| Save 1000 batch | ~0.3 ops/s | ~3.1s per batch of 1000 |
+| Update (content, re-embed) | ~155 ops/s | |
+| Update (metadata only) | ~344 ops/s | 2.2x faster than content update |
+| Delete | ~469 ops/s | |
+
+### Search (semantic, at scale)
+
+| Store Size | Operation | Notes |
+|---|---|---|
+| 10 memories | search (limit=5) | Full scan + cosine similarity per memory |
+| 100 memories | search (limit=5) | |
+| 500 memories | search (limit=5) | |
+| 1000 memories | search (limit=5) | Linear scan — scales with store size |
+
+### Decay Engine
+
+| Operation | Throughput |
+|---|---|
+| Single decay computation | ~21M ops/s |
+| Single reinforcement | ~25.7M ops/s |
+| shouldProtect (tag check) | ~22M ops/s |
+
 ## Development
 
 ```bash
 npm install          # Install dependencies
 npm run build        # Compile TypeScript
 npm test             # Run all 96 tests
+npm run bench        # Run benchmarks
 npm run test:watch   # Watch mode
 npm run test:coverage # Coverage report
 ```
