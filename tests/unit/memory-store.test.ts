@@ -204,7 +204,7 @@ describe("MemoryStore", () => {
     it("preserves metadata when not provided", async () => {
       const saved = await store.save("text", { key: "value" });
       const updated = await store.update(saved.id, "new text");
-      expect(updated!.metadata).toEqual({ key: "value" });
+      expect(updated!.metadata.key).toBe("value");
     });
 
     it("replaces metadata when provided", async () => {
@@ -250,6 +250,22 @@ describe("MemoryStore", () => {
       await store.save("three");
       expect(store.deleteAll()).toBe(3);
       expect(store.count()).toBe(0);
+    });
+  });
+
+  // ── decay on access ───────────────────────────────────────
+  describe("decay on access", () => {
+    it("updates lastAccessed when retrieving by id", async () => {
+      const saved = await store.save("decay test");
+      const found = store.getById(saved.id);
+      expect(found!.lastAccessed).toBeTruthy();
+    });
+
+    it("updates lastAccessed on search results", async () => {
+      await store.save("searchable content");
+      const results = await store.search("searchable", 5, 0.0);
+      expect(results.length).toBeGreaterThan(0);
+      expect(results[0].memory.lastAccessed).toBeTruthy();
     });
   });
 

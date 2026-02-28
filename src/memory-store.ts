@@ -3,6 +3,7 @@ import { randomUUID, createHash } from "crypto";
 import path from "path";
 import fs from "fs";
 import { LocalEmbeddings, cosineSimilarity } from "./embeddings.js";
+import { DecayEngine } from "./decay.js";
 import type { Embedder, Memory, MemoryRow, MemoryStoreConfig, SearchResult } from "./types.js";
 
 /**
@@ -13,6 +14,7 @@ export class MemoryStore {
   private db!: SqlJsDatabase;
   private dbPath: string;
   private embeddings: Embedder;
+  private decay = new DecayEngine();
   private initialized = false;
 
   constructor(config?: Partial<MemoryStoreConfig>, embedder?: Embedder) {
@@ -146,16 +148,21 @@ export class MemoryStore {
       `SELECT id, content, content_hash, metadata, embedding, tags, importance, memory_type, created_at, updated_at, last_accessed FROM memories`
     );
 
-    const scored: SearchResult[] = [];
+    const candidates: { memory: Memory; score: number }[] = [];
     while (stmt.step()) {
       const row = stmt.getAsObject() as unknown as MemoryRow;
       const memory = this.rowToMemory(row);
       const score = cosineSimilarity(queryEmbedding, memory.embedding);
       if (score >= threshold) {
-        scored.push({ memory, score });
+        candidates.push({ memory, score });
       }
     }
     stmt.free();
+
+    const scored: SearchResult[] = candidates.map(({ memory, score }) => {
+      const updated = this.applyDecayAndReinforcement(memory);
+      return { memory: updated, score };
+    });
 
     return scored
       .sort((a, b) => b.score - a.score)
@@ -174,7 +181,8 @@ export class MemoryStore {
     if (stmt.step()) {
       const row = stmt.getAsObject() as unknown as MemoryRow;
       stmt.free();
-      return this.rowToMemory(row);
+      const memory = this.rowToMemory(row);
+      return this.applyDecayAndReinforcement(memory);
     }
     stmt.free();
     return null;
@@ -275,6 +283,45 @@ export class MemoryStore {
   close(): void {
     this.persist();
     this.db.close();
+  }
+
+  private applyDecayAndReinforcement(memory: Memory): Memory {
+    if (this.decay.shouldProtect(memory.tags)) return memory;
+
+    const now = new Date();
+    const lastAccessed = new Date(memory.lastAccessed);
+    const daysIdle = Math.max(0, (now.getTime() - lastAccessed.getTime()) / (1000 * 60 * 60 * 24));
+
+    let currentImportance = memory.importance;
+
+    // Decay
+    const decayed = this.decay.computeDecay(currentImportance, daysIdle, memory.memoryType);
+    if (this.decay.shouldWriteDecay(currentImportance, decayed)) {
+      currentImportance = decayed;
+      this.db.run(`UPDATE memories SET importance = ? WHERE id = ?`, [currentImportance, memory.id]);
+    }
+
+    // Reinforcement
+    const currentAccum = (memory.metadata as Record<string, unknown>).reinforcement_accum as number ?? 0;
+    const reinforcement = this.decay.computeReinforcement(currentImportance, currentAccum);
+
+    const newMeta = { ...memory.metadata, reinforcement_accum: reinforcement.newAccum };
+    if (reinforcement.shouldWrite && reinforcement.newImportance != null) {
+      currentImportance = reinforcement.newImportance;
+      this.db.run(
+        `UPDATE memories SET importance = ?, metadata = ? WHERE id = ?`,
+        [currentImportance, JSON.stringify(newMeta), memory.id],
+      );
+    } else {
+      this.db.run(`UPDATE memories SET metadata = ? WHERE id = ?`, [JSON.stringify(newMeta), memory.id]);
+    }
+
+    // Update lastAccessed
+    const nowIso = now.toISOString();
+    this.db.run(`UPDATE memories SET last_accessed = ? WHERE id = ?`, [nowIso, memory.id]);
+    this.persist();
+
+    return { ...memory, importance: currentImportance, metadata: newMeta, lastAccessed: nowIso };
   }
 
   private rowToMemory(row: MemoryRow): Memory {
