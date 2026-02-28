@@ -8,4 +8,7 @@ export default defineConfig({
     testTimeout: 15000,
     hookTimeout: 15000,
   },
+  benchmark: {
+    include: ["tests/benchmarks/**/*.bench.ts"],
+  },
 });
