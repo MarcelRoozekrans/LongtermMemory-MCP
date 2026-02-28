@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import { LocalEmbeddings, cosineSimilarity } from "./embeddings.js";
 import { DecayEngine } from "./decay.js";
+import { BackupManager } from "./backup.js";
 import type { Embedder, Memory, MemoryRow, MemoryStoreConfig, SearchResult } from "./types.js";
 
 /**
@@ -16,10 +17,12 @@ export class MemoryStore {
   private embeddings: Embedder;
   private decay = new DecayEngine();
   private initialized = false;
+  private backup?: BackupManager;
 
-  constructor(config?: Partial<MemoryStoreConfig>, embedder?: Embedder) {
+  constructor(config?: Partial<MemoryStoreConfig>, embedder?: Embedder, backupManager?: BackupManager) {
     this.dbPath = config?.dbPath ?? path.join(process.cwd(), "data", "memories.db");
     this.embeddings = embedder ?? new LocalEmbeddings();
+    this.backup = backupManager;
   }
 
   private contentHash(content: string): string {
@@ -114,6 +117,7 @@ export class MemoryStore {
       [id, content, hash, JSON.stringify(metadata), JSON.stringify(embedding), JSON.stringify(tags), clampedImportance, memoryType, now, now, now]
     );
     this.persist();
+    this.maybeBackup();
 
     return { id, content, contentHash: hash, metadata, embedding, tags, importance: clampedImportance, memoryType, createdAt: now, updatedAt: now, lastAccessed: now };
   }
@@ -339,11 +343,37 @@ export class MemoryStore {
   }
 
   /**
+   * Trigger a manual backup. Returns null if no BackupManager is configured.
+   */
+  createBackup(): { backupPath: string; memoriesBackedUp: number; timestamp: string } | null {
+    if (!this.backup) return null;
+    const allMemories = this.getAll(10000, 0);
+    const exportable = allMemories.map((m) => ({
+      id: m.id, content: m.content, tags: m.tags, importance: m.importance,
+      memoryType: m.memoryType, metadata: m.metadata, createdAt: m.createdAt, updatedAt: m.updatedAt,
+    }));
+    return this.backup.createBackup(exportable);
+  }
+
+  /**
    * Close the database connection.
    */
   close(): void {
     this.persist();
     this.db.close();
+  }
+
+  private maybeBackup(): void {
+    if (!this.backup) return;
+    const memCount = this.count();
+    if (this.backup.shouldBackup(memCount)) {
+      const allMemories = this.getAll(10000, 0);
+      const exportable = allMemories.map((m) => ({
+        id: m.id, content: m.content, tags: m.tags, importance: m.importance,
+        memoryType: m.memoryType, metadata: m.metadata, createdAt: m.createdAt, updatedAt: m.updatedAt,
+      }));
+      this.backup.createBackup(exportable);
+    }
   }
 
   private applyDecayAndReinforcement(memory: Memory): Memory {
