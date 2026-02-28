@@ -42,6 +42,19 @@ Inspired by [mcp-mem0](https://github.com/coleam00/mcp-mem0), but runs 100% on y
 
 ## Quick Start
 
+### Claude Code Plugin (recommended)
+
+Install via the Claude Code marketplace — this sets up both the MCP server and a companion skill that teaches Claude how to use memory effectively:
+
+```
+/plugin marketplace add MarcelRoozekrans/LongtermMemory-MCP
+/plugin install longterm-memory@longterm-memory-marketplace
+```
+
+This automatically:
+- Configures the MCP server (no manual JSON editing)
+- Installs the `long-term-memory` skill (Claude learns to recall context at session start, save insights after tasks, and deduplicate memories)
+
 ### Use with npx (no install needed)
 
 ```bash
@@ -68,7 +81,7 @@ npm start
 
 ### Claude Code
 
-Add to your MCP settings (`~/.claude/settings.json` or project `.claude/settings.json`):
+If you installed via the plugin marketplace, the MCP server is already configured. For manual setup, add to your MCP settings (`~/.claude/settings.json` or project `.claude/settings.json`):
 
 ```json
 {
@@ -190,14 +203,22 @@ The embedding model (~30MB quantized) is downloaded once on first use and cached
 ## Architecture
 
 ```
-src/
-  index.ts          — Entry point (stdio transport, DB/backup path resolution)
-  server.ts         — MCP server factory + 11 tool definitions
-  memory-store.ts   — SQLite storage + vector search + decay integration
-  embeddings.ts     — Local embedding engine (Xenova/transformers)
-  decay.ts          — DecayEngine (lazy decay, reinforcement, protected tags)
-  backup.ts         — BackupManager (auto-backup, JSON export, pruning)
-  types.ts          — TypeScript interfaces (Memory, Embedder, config types)
+src/                           — MCP server source
+  index.ts                     — Entry point (stdio transport, DB/backup path resolution)
+  server.ts                    — MCP server factory + 11 tool definitions
+  memory-store.ts              — SQLite storage + vector search + decay integration
+  embeddings.ts                — Local embedding engine (Xenova/transformers)
+  decay.ts                     — DecayEngine (lazy decay, reinforcement, protected tags)
+  backup.ts                    — BackupManager (auto-backup, JSON export, pruning)
+  types.ts                     — TypeScript interfaces (Memory, Embedder, config types)
+
+skills/                        — Claude Code plugin skill
+  long-term-memory/SKILL.md    — Teaches Claude how to use memory effectively
+
+.claude-plugin/                — Plugin & marketplace metadata
+  plugin.json                  — Plugin manifest
+  marketplace.json             — Marketplace manifest
+.mcp.json                      — Auto-configures MCP server on plugin install
 ```
 
 ## Development
