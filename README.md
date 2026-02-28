@@ -14,14 +14,31 @@ Inspired by [mcp-mem0](https://github.com/coleam00/mcp-mem0), but runs 100% on y
 
 ## Tools
 
+### Core
+
 | Tool | Description |
 |---|---|
-| `save_memory` | Store text with auto-generated semantic embedding |
-| `search_memory` | Find relevant memories using natural language queries |
-| `get_all_memories` | List all stored memories (paginated) |
+| `save_memory` | Store text with auto-generated semantic embedding, tags, importance, and type |
+| `search_memory` | Find relevant memories using natural language queries (cosine similarity) |
+| `update_memory` | Modify an existing memory's content, metadata, tags, importance, or type |
 | `delete_memory` | Remove a specific memory by ID |
-| `delete_all_memories` | Wipe all memories |
+| `delete_all_memories` | Wipe all memories (irreversible) |
+| `get_all_memories` | List all stored memories (paginated) |
 | `memory_stats` | Get count and database location |
+
+### Search
+
+| Tool | Description |
+|---|---|
+| `search_by_type` | Filter memories by category (`general`, `fact`, `preference`, `conversation`, `task`, `ephemeral`) |
+| `search_by_tags` | Find memories matching any of the provided tags |
+| `search_by_date_range` | Find memories created within a specific date range (ISO format) |
+
+### Maintenance
+
+| Tool | Description |
+|---|---|
+| `create_backup` | Manually trigger a database backup with JSON export |
 
 ## Quick Start
 
@@ -107,11 +124,66 @@ To isolate memories for a specific project, set the `MEMORY_DB_PATH` environment
 }
 ```
 
+## Memory Types
+
+Each memory has a `memory_type` that determines how it's categorized and how quickly it decays:
+
+| Type | Description | Decay half-life |
+|---|---|---|
+| `general` | Default catch-all | 60 days |
+| `fact` | Verified information | 120 days |
+| `preference` | User/project preferences | 90 days |
+| `conversation` | Conversation context | 45 days |
+| `task` | Task-related notes | 30 days |
+| `ephemeral` | Short-lived context | 10 days |
+
+## Tags & Importance
+
+- **Tags**: Categorize memories with string tags (e.g. `["auth", "backend"]`). Search with `search_by_tags`.
+- **Importance** (1–10): Controls how resistant a memory is to decay. Default is 5. Higher importance decays more slowly.
+- **Protected tags**: Memories tagged with `core`, `identity`, or `pinned` skip decay entirely.
+
+## Decay & Reinforcement
+
+Memories decay over time to keep the store relevant:
+
+- **Decay**: Each memory type has a half-life (see table above). Importance decreases exponentially based on time since last access, with a floor that prevents full deletion.
+- **Reinforcement**: Every time a memory is accessed via search, its importance increases by +0.1 (up to a max of 10). Frequently accessed memories stay important.
+- **Lazy evaluation**: Decay is calculated on access, not on a timer — no background processes needed.
+
+## Content Deduplication
+
+Memory content is hashed (SHA-256) on save. If identical content already exists, the save is rejected with a reference to the existing memory ID. This prevents duplicate entries automatically.
+
+## Backups
+
+Backups are managed automatically and can also be triggered manually via the `create_backup` tool.
+
+- **Auto-backup**: Triggers every 24 hours or when the memory count reaches a multiple of 100.
+- **Retention**: The last 10 backups are kept; older ones are pruned automatically.
+- **Format**: Each backup is a timestamped directory containing the SQLite database and a JSON export of all memories.
+- **Location**: `~/.longterm-memory-mcp/backups/` by default, or set `MEMORY_BACKUP_PATH`:
+
+```json
+{
+  "mcpServers": {
+    "longterm-memory": {
+      "command": "npx",
+      "args": ["-y", "longterm-memory-mcp"],
+      "env": {
+        "MEMORY_BACKUP_PATH": "/path/to/backups"
+      }
+    }
+  }
+}
+```
+
 ## How It Works
 
-1. **Save**: Text is embedded locally using `all-MiniLM-L6-v2` (384-dim vectors) and stored in SQLite alongside the raw content and metadata.
-2. **Search**: Your query is embedded with the same model, then compared against every stored memory using cosine similarity. Results above the threshold are returned ranked by relevance.
-3. **Persist**: The SQLite database is a single file on disk. No background processes, no servers to maintain.
+1. **Save**: Text is embedded locally using `all-MiniLM-L6-v2` (384-dim vectors) and stored in SQLite alongside the raw content, metadata, tags, importance, and type. Content is deduplicated via SHA-256 hash.
+2. **Search**: Your query is embedded with the same model, then compared against every stored memory using cosine similarity. Results above the threshold are returned ranked by relevance. Accessed memories are reinforced automatically.
+3. **Decay**: Over time, unused memories lose importance based on their type's half-life. Protected and frequently accessed memories resist decay.
+4. **Persist**: The SQLite database is a single file on disk. No background processes, no servers to maintain.
 
 The embedding model (~30MB quantized) is downloaded once on first use and cached locally.
 
@@ -119,11 +191,13 @@ The embedding model (~30MB quantized) is downloaded once on first use and cached
 
 ```
 src/
-  index.ts          — Entry point (stdio transport, DB path resolution)
-  server.ts         — MCP server factory + tool definitions
-  memory-store.ts   — SQLite storage + vector search logic
+  index.ts          — Entry point (stdio transport, DB/backup path resolution)
+  server.ts         — MCP server factory + 11 tool definitions
+  memory-store.ts   — SQLite storage + vector search + decay integration
   embeddings.ts     — Local embedding engine (Xenova/transformers)
-  types.ts          — TypeScript interfaces (Memory, Embedder, etc.)
+  decay.ts          — DecayEngine (lazy decay, reinforcement, protected tags)
+  backup.ts         — BackupManager (auto-backup, JSON export, pruning)
+  types.ts          — TypeScript interfaces (Memory, Embedder, config types)
 ```
 
 ## Development
@@ -131,7 +205,7 @@ src/
 ```bash
 npm install          # Install dependencies
 npm run build        # Compile TypeScript
-npm test             # Run all 46 tests
+npm test             # Run all 96 tests
 npm run test:watch   # Watch mode
 npm run test:coverage # Coverage report
 ```
