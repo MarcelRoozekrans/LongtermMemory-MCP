@@ -17,4 +17,5 @@ coverage/
 
 # IDE
 .vscode/
+!.vscode/mcp.json
 .idea/

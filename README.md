@@ -109,6 +109,41 @@ Add to `claude_desktop_config.json`:
 }
 ```
 
+### VS Code / GitHub Copilot
+
+MCP is natively supported in VS Code 1.99+ with GitHub Copilot. Add a `.vscode/mcp.json` file to your project (or user settings):
+
+```json
+{
+  "servers": {
+    "longterm-memory": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "longterm-memory-mcp"]
+    }
+  }
+}
+```
+
+To use a per-project database with VS Code's `${workspaceFolder}` variable:
+
+```json
+{
+  "servers": {
+    "longterm-memory": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "longterm-memory-mcp"],
+      "env": {
+        "MEMORY_DB_PATH": "${workspaceFolder}/.memory/memories.db"
+      }
+    }
+  }
+}
+```
+
+> **Note**: Make sure Copilot Chat agent mode is enabled. Open Copilot Chat, switch to **Agent** mode, and the memory tools will appear automatically.
+
 ## Database Location
 
 By default, memories are stored in a **shared, user-scoped location**:
