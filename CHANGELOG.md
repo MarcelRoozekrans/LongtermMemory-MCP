@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/v1.0.0...v1.1.0) (2026-02-28)
+
+
+### Features
+
+* add Claude Code marketplace plugin with long-term-memory skill ([b530582](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/b53058243bf7fcb3ee7e2e27b750a7473695b67e))
+
 # 1.0.0 (2026-02-28)
 
 
