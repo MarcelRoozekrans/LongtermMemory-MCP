@@ -47,7 +47,7 @@ When invoked at the start of a session:
 When invoked after a skill completes:
 
 1. **Identify the completed skill** and extract key insights using the mapping table below
-2. **Deduplicate** — Call `search_memory` with the insight text. If a result covers the same core fact, call `delete_memory` on the old one before saving the updated version
+2. **Deduplicate** — Call `search_memory` with the insight text. If a result covers the same core fact, use `update_memory` to revise it in place (preferred), or `delete_memory` + `save_memory` if the content is completely different
 3. **Persist** — Call `save_memory` with a structured text string (see format below)
 
 ### Memory Text Format
@@ -79,7 +79,7 @@ Encode category info as a structured prefix so semantic search can match on it:
 
 - **Project name**: Derive from working directory or git remote. Lowercase. Use `global` for cross-project preferences.
 - **Content**: 1-3 sentences capturing the core insight. Concise, reusable.
-- **Dedup before save**: Always `search_memory` first. If same fact exists, `delete_memory` the old one, then `save_memory` the updated version.
+- **Dedup before save**: Always `search_memory` first. If same fact exists, prefer `update_memory` to revise in place. If `save_memory` rejects with a duplicate content error, use the returned memory ID with `update_memory` instead.
 - **Never save**: Session-specific temp state, file contents, secrets/credentials, speculative conclusions
 
 ### Save Parameters
@@ -130,7 +130,7 @@ If any longterm-memory MCP tool call fails or times out:
 | Announcing "I recalled from memory..." | Never. Integrate silently. |
 | Saving entire file contents | Save the insight, not the data |
 | Saving session-specific temp state | Only save reusable, cross-session insights |
-| Creating duplicate memories | Always search before saving; delete old + save new |
+| Creating duplicate memories | Always search before saving; use `update_memory` or delete + save |
 | Saving speculative conclusions | Only save confirmed facts and expressed preferences |
 | Showing errors when MCP is down | Degrade silently, proceed normally |
 | Using only semantic search | Use structured search (by type, tags, date) when appropriate |
