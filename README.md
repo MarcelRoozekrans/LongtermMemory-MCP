@@ -373,6 +373,10 @@ Releases are fully automated. When commits are pushed to `main`:
 
 No manual version bumps or tags needed.
 
+### Dependency Updates
+
+Dependencies are managed automatically by [Renovate](https://github.com/apps/renovate). Patch and minor devDependency updates are auto-merged after CI passes. Major updates create PRs for manual review.
+
 ## License
 
 MIT
