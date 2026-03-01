@@ -1,0 +1,46 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "Auto-merge patch updates for all dependencies",
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "Auto-merge minor updates for devDependencies",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor"],
+      "automerge": true
+    },
+    {
+      "description": "Group non-major devDependency updates",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "devDependencies (non-major)"
+    },
+    {
+      "description": "Group lint and commit tooling",
+      "matchPackageNames": [
+        "@commitlint/cli",
+        "@commitlint/config-conventional",
+        "husky",
+        "semantic-release",
+        "@semantic-release/changelog",
+        "@semantic-release/git"
+      ],
+      "groupName": "lint and commit tooling"
+    },
+    {
+      "description": "Group test tooling",
+      "matchPackageNames": ["vitest"],
+      "groupName": "test tooling"
+    },
+    {
+      "description": "Group TypeScript tooling",
+      "matchPackageNames": ["typescript", "@types/node", "@types/sql.js"],
+      "groupName": "typescript tooling"
+    }
+  ]
+}
