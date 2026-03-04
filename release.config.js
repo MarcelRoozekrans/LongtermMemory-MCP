@@ -9,7 +9,6 @@ export default {
         changelogFile: 'CHANGELOG.md',
       },
     ],
-    ['@semantic-release/npm', { provenance: true }],
     [
       '@semantic-release/exec',
       {
@@ -17,6 +16,7 @@ export default {
           'node -e "const s=JSON.parse(require(\'fs\').readFileSync(\'server.json\',\'utf8\'));s.version=\'${nextRelease.version}\';s.packages[0].version=\'${nextRelease.version}\';require(\'fs\').writeFileSync(\'server.json\',JSON.stringify(s,null,2)+\'\\n\')"',
       },
     ],
+    ['@semantic-release/npm', { provenance: true }],
     [
       '@semantic-release/github',
       {
