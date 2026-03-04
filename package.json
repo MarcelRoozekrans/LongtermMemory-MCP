@@ -12,7 +12,8 @@
     "dist",
     "README.md",
     "INSTRUCTIONS.md",
-    "LICENSE"
+    "LICENSE",
+    "server.json"
   ],
   "scripts": {
     "build": "tsc",
@@ -46,6 +47,7 @@
     "url": "https://github.com/MarcelRoozekrans/LongtermMemory-MCP/issues"
   },
   "homepage": "https://github.com/MarcelRoozekrans/LongtermMemory-MCP#readme",
+  "mcpName": "io.github.marcelroozekrans/longterm-memory",
   "publishConfig": {
     "access": "public"
   },
