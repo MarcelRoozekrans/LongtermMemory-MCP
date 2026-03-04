@@ -64,6 +64,7 @@
     "@commitlint/cli": "^20.4.2",
     "@commitlint/config-conventional": "^20.4.2",
     "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^10.0.1",
     "@types/node": "^22.13.5",
     "@types/sql.js": "^1.4.9",
