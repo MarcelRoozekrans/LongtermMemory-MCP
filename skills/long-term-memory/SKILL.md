@@ -1,6 +1,6 @@
 ---
 name: long-term-memory
-description: Use when starting any session, after completing debugging sessions, after brainstorming or planning, after code reviews, or after any major task completion
+description: Use when starting any session, after completing debugging sessions, after brainstorming or planning, after code reviews, or after any major task completion. Works standalone with the longterm-memory MCP server.
 ---
 
 # Long-Term Memory
@@ -26,11 +26,11 @@ Persistent, semantic memory across sessions. Two modes: **RECALL** at session st
 ## When to Use
 
 - **Session start**: Always. Recall relevant memories before any work begins.
-- **After systematic-debugging**: Save root causes and fix patterns.
-- **After brainstorming**: Save design decisions and architecture choices.
-- **After writing-plans**: Save implementation approach and tech decisions.
+- **After debugging / bug fixes**: Save root causes and fix patterns.
+- **After brainstorming / design work**: Save design decisions and architecture choices.
+- **After planning / implementation**: Save implementation approach and tech decisions.
 - **After code reviews**: Save style preferences and feedback patterns.
-- **After test-driven-development**: Save test patterns and strategies.
+- **After writing tests**: Save test patterns and strategies.
 - **After any major task**: Save workflow preferences discovered during the session.
 
 ## RECALL Mode (Session Start)

@@ -1,6 +1,6 @@
 # Memory Enhancements Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** Implement this plan task-by-task, reviewing after each task before proceeding.
 
 **Goal:** Add content deduplication, structured search (type/tags/date), memory decay & reinforcement, and auto-backups with JSON export.
 
