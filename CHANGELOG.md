@@ -1,3 +1,10 @@
+## [1.1.3](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/v1.1.2...v1.1.3) (2026-03-07)
+
+
+### Bug Fixes
+
+* **release:** include .claude-plugin files in semantic-release versioning ([bffc579](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/bffc579c8d256226482948ba2df270580f1828e1))
+
 ## [1.1.2](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/v1.1.1...v1.1.2) (2026-03-06)
 
 
