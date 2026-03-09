@@ -5,22 +5,33 @@
   },
   "metadata": {
     "description": "Persistent semantic long-term memory for AI agents — fully local, no cloud dependencies",
-    "version": "1.1.0"
+    "version": "1.1.3"
   },
   "plugins": [
     {
       "name": "longterm-memory",
       "source": "./",
       "description": "Persistent semantic long-term memory — fully local, no cloud dependencies",
-      "version": "1.1.0",
+      "version": "1.1.3",
       "author": {
         "name": "Marcel Roozekrans"
       },
       "repository": "https://github.com/MarcelRoozekrans/LongtermMemory-MCP",
       "license": "MIT",
-      "keywords": ["memory", "semantic-search", "mcp", "local", "sqlite"],
+      "keywords": [
+        "memory",
+        "semantic-search",
+        "mcp",
+        "local",
+        "sqlite"
+      ],
       "category": "productivity",
-      "tags": ["memory", "mcp", "ai", "local"]
+      "tags": [
+        "memory",
+        "mcp",
+        "ai",
+        "local"
+      ]
     }
   ]
 }

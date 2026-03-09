@@ -1,3 +1,20 @@
+## [1.1.3](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/v1.1.2...v1.1.3) (2026-03-07)
+
+
+### Bug Fixes
+
+* **release:** include .claude-plugin files in semantic-release versioning ([bffc579](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/bffc579c8d256226482948ba2df270580f1828e1))
+
+## [1.1.2](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/v1.1.1...v1.1.2) (2026-03-06)
+
+
+### Bug Fixes
+
+* **ci:** use SSH repositoryUrl so semantic-release pushes via deploy key ([bd07264](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/bd07264a529aa4e5076b94b34e715d21ecc713e9))
+* correct semantic-release plugin ordering and add workflow_dispatch ([dd16c1c](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/dd16c1c84efc23cbd10fa5a9eb8e75bf5efb46f2))
+* restore Claude Code-specific sections in SKILL.md ([5cf48ce](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/5cf48ce1b9a81654218dc77afb3dc58ed0795b8e))
+* use deploy key for semantic-release git push ([e99fe99](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/e99fe99180503122c377e3502aaceedd73465b00))
+
 ## [1.1.1](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/v1.1.0...v1.1.1) (2026-02-28)
 
 
