@@ -12,6 +12,7 @@ import type { Embedder, Memory, MemoryRow, MemoryStoreConfig, SearchResult } fro
  * Uses sql.js (WASM) — zero native dependencies, all data stays on disk.
  */
 export class MemoryStore {
+  private static readonly SCHEMA_VERSION = 1;
   private db!: SqlJsDatabase;
   private dbPath: string;
   private embeddings: Embedder;
@@ -55,6 +56,45 @@ export class MemoryStore {
   }
 
   private initializeSchema(): void {
+    const expectedVersion = MemoryStore.SCHEMA_VERSION;
+
+    // Check if schema_meta table exists
+    const metaExists = this.db.exec(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='schema_meta'"
+    );
+    const hasMetaTable = metaExists.length > 0 && metaExists[0].values.length > 0;
+
+    if (!hasMetaTable) {
+      // Legacy or fresh DB — drop memories if it exists, start clean
+      this.db.run("DROP TABLE IF EXISTS memories");
+      this.db.run("CREATE TABLE schema_meta (schema_version INTEGER NOT NULL)");
+      this.db.run("INSERT INTO schema_meta (schema_version) VALUES (?)", [expectedVersion]);
+      this.createMemoriesTable();
+      this.createIndexes();
+      return;
+    }
+
+    // schema_meta exists — check version
+    const stmt = this.db.prepare("SELECT schema_version FROM schema_meta LIMIT 1");
+    let currentVersion = -1;
+    if (stmt.step()) {
+      currentVersion = (stmt.getAsObject() as { schema_version: number }).schema_version;
+    }
+    stmt.free();
+
+    if (currentVersion === expectedVersion) {
+      return; // Schema is up to date
+    }
+
+    // Version mismatch — wipe and recreate
+    this.db.run("DROP TABLE IF EXISTS memories");
+    this.createMemoriesTable();
+    this.createIndexes();
+    this.db.run("DELETE FROM schema_meta");
+    this.db.run("INSERT INTO schema_meta (schema_version) VALUES (?)", [expectedVersion]);
+  }
+
+  private createMemoriesTable(): void {
     this.db.run(`
       CREATE TABLE IF NOT EXISTS memories (
         id TEXT PRIMARY KEY,
@@ -70,11 +110,14 @@ export class MemoryStore {
         last_accessed TEXT NOT NULL
       )
     `);
-    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memories_created_at ON memories(created_at)`);
-    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memories_content_hash ON memories(content_hash)`);
-    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memories_memory_type ON memories(memory_type)`);
-    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memories_importance ON memories(importance)`);
-    this.db.run(`CREATE INDEX IF NOT EXISTS idx_memories_last_accessed ON memories(last_accessed)`);
+  }
+
+  private createIndexes(): void {
+    this.db.run("CREATE INDEX IF NOT EXISTS idx_memories_created_at ON memories(created_at)");
+    this.db.run("CREATE INDEX IF NOT EXISTS idx_memories_content_hash ON memories(content_hash)");
+    this.db.run("CREATE INDEX IF NOT EXISTS idx_memories_memory_type ON memories(memory_type)");
+    this.db.run("CREATE INDEX IF NOT EXISTS idx_memories_importance ON memories(importance)");
+    this.db.run("CREATE INDEX IF NOT EXISTS idx_memories_last_accessed ON memories(last_accessed)");
   }
 
   /** Persist the in-memory database to disk. */
@@ -429,5 +472,37 @@ export class MemoryStore {
       updatedAt: row.updated_at,
       lastAccessed: row.last_accessed,
     };
+  }
+
+  /** @internal Exposed for testing only — returns the current schema version from DB. */
+  _getSchemaVersion(): number {
+    const tableExists = this.db.exec(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='schema_meta'"
+    );
+    if (tableExists.length === 0 || tableExists[0].values.length === 0) return -1;
+
+    const stmt = this.db.prepare("SELECT schema_version FROM schema_meta LIMIT 1");
+    if (stmt.step()) {
+      const row = stmt.getAsObject() as { schema_version: number };
+      stmt.free();
+      return row.schema_version;
+    }
+    stmt.free();
+    return -1;
+  }
+
+  /** @internal Exposed for testing only — sets schema version to simulate old DB. */
+  _setSchemaVersionForTesting(version: number): void {
+    this.db.run("UPDATE schema_meta SET schema_version = ?", [version]);
+  }
+
+  /** @internal Exposed for testing only — drops schema_meta to simulate legacy DB. */
+  _dropSchemaMetaForTesting(): void {
+    this.db.run("DROP TABLE IF EXISTS schema_meta");
+  }
+
+  /** @internal Exposed for testing only — re-runs schema initialization to test migration paths. */
+  _reinitializeForTesting(): void {
+    this.initializeSchema();
   }
 }
