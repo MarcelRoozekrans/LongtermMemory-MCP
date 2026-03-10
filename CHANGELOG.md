@@ -5,6 +5,13 @@
 
 * **release:** include .claude-plugin files in semantic-release versioning ([bffc579](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/bffc579c8d256226482948ba2df270580f1828e1))
 
+## [1.3.0](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/longterm-memory-mcp-v1.2.0...longterm-memory-mcp-v1.3.0) (2026-03-10)
+
+
+### Features
+
+* add project icon ([9bb14a6](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/9bb14a656a9218f9ebbcc289f9984ed11294c51a))
+
 ## [1.2.0](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/longterm-memory-mcp-v1.1.1...longterm-memory-mcp-v1.2.0) (2026-03-09)
 
 
