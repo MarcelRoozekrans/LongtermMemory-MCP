@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#c4b5fd;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#a78bfa;stop-opacity:0.1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect x="16" y="16" width="480" height="480" rx="96" ry="96" fill="url(#bg)"/>
+
+  <!-- Subtle inner glow -->
+  <rect x="32" y="32" width="448" height="448" rx="80" ry="80" fill="url(#glow)"/>
+
+  <!-- Brain left hemisphere -->
+  <g transform="translate(256, 220)" fill="none" stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Left hemisphere outline -->
+    <path d="M-10,-95 C-45,-95 -75,-85 -95,-60 C-115,-35 -120,-5 -115,25 C-118,35 -125,45 -125,60 C-125,80 -112,95 -95,100 C-90,115 -75,125 -55,125 C-45,125 -35,120 -28,112 C-20,118 -10,120 -5,120" fill="rgba(255,255,255,0.1)"/>
+
+    <!-- Left brain folds -->
+    <path d="M-95,-20 C-75,-15 -55,-25 -40,-10"/>
+    <path d="M-110,30 C-85,25 -65,35 -45,25"/>
+    <path d="M-100,70 C-80,60 -60,70 -40,60"/>
+
+    <!-- Right hemisphere outline -->
+    <path d="M10,-95 C45,-95 75,-85 95,-60 C115,-35 120,-5 115,25 C118,35 125,45 125,60 C125,80 112,95 95,100 C90,115 75,125 55,125 C45,125 35,120 28,112 C20,118 10,120 5,120" fill="rgba(255,255,255,0.1)"/>
+
+    <!-- Right brain folds -->
+    <path d="M95,-20 C75,-15 55,-25 40,-10"/>
+    <path d="M110,30 C85,25 65,35 45,25"/>
+    <path d="M100,70 C80,60 60,70 40,60"/>
+
+    <!-- Center line -->
+    <path d="M0,-95 L0,120"/>
+  </g>
+
+  <!-- Connection nodes (representing semantic connections / vectors) -->
+  <g fill="#c4b5fd">
+    <circle cx="160" cy="155" r="8"/>
+    <circle cx="352" cy="155" r="8"/>
+    <circle cx="130" cy="260" r="8"/>
+    <circle cx="382" cy="260" r="8"/>
+    <circle cx="155" cy="365" r="8"/>
+    <circle cx="357" cy="365" r="8"/>
+  </g>
+
+  <!-- Small database icon at bottom -->
+  <g transform="translate(256, 420)" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round">
+    <ellipse cx="0" cy="-15" rx="35" ry="12" fill="rgba(255,255,255,0.15)"/>
+    <path d="M-35,-15 L-35,15 C-35,22 -19,28 0,28 C19,28 35,22 35,15 L35,-15"/>
+    <path d="M-35,0 C-35,7 -19,12 0,12 C19,12 35,7 35,0"/>
+  </g>
+
+  <!-- Connection line from brain to database -->
+  <line x1="256" y1="340" x2="256" y2="393" stroke="#c4b5fd" stroke-width="6" stroke-dasharray="8,6" opacity="0.7"/>
+</svg>

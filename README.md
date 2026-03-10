@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="icon.svg" alt="LongtermMemory-MCP" width="128" height="128"/>
+</p>
+
 # LongtermMemory-MCP
 
 A fully local MCP server that gives AI agents persistent, semantic long-term memory — **without any cloud dependencies**.
