@@ -13,6 +13,7 @@
     "README.md",
     "skills",
     "LICENSE",
+    "icon.svg",
     "server.json"
   ],
   "scripts": {
