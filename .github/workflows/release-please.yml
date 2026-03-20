@@ -7,6 +7,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  id-token: write
 
 jobs:
   release-please:
@@ -27,6 +28,9 @@ jobs:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -45,7 +49,9 @@ jobs:
         run: npm test
 
       - name: Publish to npm
-        run: npm publish
+        run: npm publish --provenance --access public
 
       - name: Upload dist to GitHub Release
         run: gh release upload ${{ needs.release-please.outputs.tag_name }} ./dist/*
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
