@@ -1,6 +1,6 @@
 {
   "name": "longterm-memory",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Persistent semantic long-term memory for AI agents — fully local, no cloud dependencies",
   "author": {
     "name": "Marcel Roozekrans",
