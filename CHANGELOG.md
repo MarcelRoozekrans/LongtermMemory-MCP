@@ -5,6 +5,14 @@
 
 * **release:** include .claude-plugin files in semantic-release versioning ([bffc579](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/bffc579c8d256226482948ba2df270580f1828e1))
 
+## [1.4.1](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/longterm-memory-mcp-v1.4.0...longterm-memory-mcp-v1.4.1) (2026-03-26)
+
+
+### Bug Fixes
+
+* **deps:** update dependency zod to v4 ([48a9201](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/48a9201a195e6733db2e4fafe7e5398b4b6b00a5))
+* **deps:** update dependency zod to v4 with compatibility fixes ([7df9fee](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/7df9fee3ef0148e1bafc1cc6986b50cc162ee237))
+
 ## [1.4.0](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/longterm-memory-mcp-v1.3.0...longterm-memory-mcp-v1.4.0) (2026-03-20)
 
 

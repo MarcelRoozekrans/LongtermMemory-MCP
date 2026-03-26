@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Persistent semantic long-term memory for AI agents — fully local, no cloud dependencies",
-    "version": "1.4.0"
+    "version": "1.4.1"
   },
   "plugins": [
     {
       "name": "longterm-memory",
       "source": "./",
       "description": "Persistent semantic long-term memory — fully local, no cloud dependencies",
-      "version": "1.4.0",
+      "version": "1.4.1",
       "author": {
         "name": "Marcel Roozekrans"
       },
