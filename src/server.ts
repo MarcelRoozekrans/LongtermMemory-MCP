@@ -16,7 +16,7 @@ export function createServer(store: MemoryStore, dbPath?: string): McpServer {
     {
       content: z.string().describe("The text content to store in memory"),
       metadata: z
-        .record(z.unknown())
+        .record(z.string(), z.unknown())
         .optional()
         .describe("Optional key-value metadata to attach to this memory (e.g. { \"topic\": \"auth\", \"project\": \"api\" })"),
       tags: z
@@ -163,7 +163,7 @@ export function createServer(store: MemoryStore, dbPath?: string): McpServer {
     {
       id: z.string().uuid().describe("The UUID of the memory to update"),
       content: z.string().optional().describe("New text content (triggers re-embedding)"),
-      metadata: z.record(z.unknown()).optional().describe("New metadata object"),
+      metadata: z.record(z.string(), z.unknown()).optional().describe("New metadata object"),
       tags: z.array(z.string()).optional().describe("New tags array"),
       importance: z.number().min(1).max(10).optional().describe("New importance level 1-10"),
       memory_type: z
