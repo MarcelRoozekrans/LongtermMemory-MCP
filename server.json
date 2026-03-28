@@ -6,12 +6,12 @@
     "url": "https://github.com/MarcelRoozekrans/LongtermMemory-MCP",
     "source": "github"
   },
-  "version": "1.4.2",
+  "version": "1.4.3",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "longterm-memory-mcp",
-      "version": "1.4.2",
+      "version": "1.4.3",
       "transport": {
         "type": "stdio"
       }
