@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.marcelroozekrans/longterm-memory",
+  "name": "io.github.MarcelRoozekrans/longterm-memory",
   "description": "A fully local MCP server for long-term memory with semantic search",
   "repository": {
     "url": "https://github.com/MarcelRoozekrans/LongtermMemory-MCP",
