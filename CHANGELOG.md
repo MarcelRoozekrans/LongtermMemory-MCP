@@ -5,6 +5,14 @@
 
 * **release:** include .claude-plugin files in semantic-release versioning ([bffc579](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/bffc579c8d256226482948ba2df270580f1828e1))
 
+## [1.4.2](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/longterm-memory-mcp-v1.4.1...longterm-memory-mcp-v1.4.2) (2026-03-28)
+
+
+### Bug Fixes
+
+* correct MCP registry name casing ([77fe9fe](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/77fe9fec34fc92d7e1d2550b2b82af864813c0ba))
+* correct MCP registry name casing ([fd879d5](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/fd879d59fef978b51844a420f5f9fbc982e45539))
+
 ## [1.4.1](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/longterm-memory-mcp-v1.4.0...longterm-memory-mcp-v1.4.1) (2026-03-26)
 
 
