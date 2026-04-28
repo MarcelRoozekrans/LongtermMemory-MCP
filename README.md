@@ -4,6 +4,9 @@
 
 # LongtermMemory-MCP
 
+[![GitHub Sponsors](https://img.shields.io/github/sponsors/MarcelRoozekrans?style=flat&logo=githubsponsors&color=ea4aaa&label=Sponsor)](https://github.com/sponsors/MarcelRoozekrans)
+
+
 A fully local MCP server that gives AI agents persistent, semantic long-term memory — **without any cloud dependencies**.
 
 Inspired by [mcp-mem0](https://github.com/coleam00/mcp-mem0), but runs 100% on your machine:
