@@ -5,6 +5,13 @@
 
 * **release:** include .claude-plugin files in semantic-release versioning ([bffc579](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/bffc579c8d256226482948ba2df270580f1828e1))
 
+## [1.4.4](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/longterm-memory-mcp-v1.4.3...longterm-memory-mcp-v1.4.4) (2026-04-28)
+
+
+### Bug Fixes
+
+* **tsconfig:** add node to compilerOptions.types ([95ea138](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/95ea138932da0764cd8467a60acbfdb2330122df))
+
 ## [1.4.3](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/longterm-memory-mcp-v1.4.2...longterm-memory-mcp-v1.4.3) (2026-03-28)
 
 
