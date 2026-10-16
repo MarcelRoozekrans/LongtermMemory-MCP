@@ -19,3 +19,6 @@ coverage/
 .vscode/
 !.vscode/mcp.json
 .idea/
+
+# Screenshots and page snapshots the Playwright MCP server writes into the working directory.
+.playwright-mcp/
