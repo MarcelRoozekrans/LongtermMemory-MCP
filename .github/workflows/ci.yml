@@ -13,6 +13,9 @@ jobs:
   test:
     name: Test (Node ${{ matrix.node-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write   # Codecov upload via OIDC, no token secret
     strategy:
       fail-fast: false
       matrix:
@@ -29,7 +32,17 @@ jobs:
 
       - run: npm ci
       - run: npm run build
-      - run: npm test
+      - run: npm run test:coverage
+
+      # Every leg uploads; Codecov merges them.
+      - name: Upload coverage to Codecov
+        if: '!cancelled()'
+        uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          files: coverage/lcov.info
+          disable_search: true   # only the file above
+          fail_ci_if_error: false
 
   typecheck:
     name: Typecheck
