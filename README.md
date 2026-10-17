@@ -4,6 +4,7 @@
 
 # LongtermMemory-MCP
 
+[![codecov](https://codecov.io/gh/MarcelRoozekrans/LongtermMemory-MCP/graph/badge.svg)](https://codecov.io/gh/MarcelRoozekrans/LongtermMemory-MCP)
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/MarcelRoozekrans?style=flat&logo=githubsponsors&color=ea4aaa&label=Sponsor)](https://github.com/sponsors/MarcelRoozekrans)
 
 
