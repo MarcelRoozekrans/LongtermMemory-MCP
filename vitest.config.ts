@@ -7,6 +7,12 @@ export default defineConfig({
     include: ["tests/**/*.test.ts"],
     testTimeout: 15000,
     hookTimeout: 15000,
+    // Used by `npm run test:coverage`; CI uploads coverage/lcov.info to Codecov.
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.ts"],
+      reporter: ["text", "lcov"],
+    },
   },
   benchmark: {
     include: ["tests/benchmarks/**/*.bench.ts"],
