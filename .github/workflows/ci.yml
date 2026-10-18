@@ -37,7 +37,7 @@ jobs:
       # Every leg uploads; Codecov merges them.
       - name: Upload coverage to Codecov
         if: '!cancelled()'
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           use_oidc: true
           files: coverage/lcov.info
