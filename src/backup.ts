@@ -19,7 +19,11 @@ export class BackupManager {
     this.backupDir = backupDir ?? path.join(path.dirname(dbPath), "backups");
   }
 
-  createBackup(memories: Array<Record<string, unknown>>): BackupResult {
+  /**
+   * @param writeDbCopy writes a consistent copy of the database to the given path. Without it the
+   * database file is copied as is, which misses changes still in a WAL file.
+   */
+  createBackup(memories: Array<Record<string, unknown>>, writeDbCopy?: (destination: string) => void): BackupResult {
     if (!fs.existsSync(this.backupDir)) {
       fs.mkdirSync(this.backupDir, { recursive: true });
     }
@@ -30,8 +34,11 @@ export class BackupManager {
     fs.mkdirSync(backupPath, { recursive: true });
 
     // Copy database file
-    if (fs.existsSync(this.dbPath)) {
-      fs.copyFileSync(this.dbPath, path.join(backupPath, "memories.db"));
+    const dbCopy = path.join(backupPath, "memories.db");
+    if (writeDbCopy) {
+      writeDbCopy(dbCopy);
+    } else if (fs.existsSync(this.dbPath)) {
+      fs.copyFileSync(this.dbPath, dbCopy);
     }
 
     // Export memories as JSON

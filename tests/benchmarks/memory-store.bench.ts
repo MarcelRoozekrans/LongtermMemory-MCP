@@ -1,27 +1,12 @@
-import { bench, describe, beforeAll, vi } from "vitest";
+import { bench, describe, beforeAll } from "vitest";
 import { createMockEmbeddings } from "../helpers/mock-embeddings.js";
-
-// Mock fs so MemoryStore never touches disk (same pattern as unit tests)
-vi.mock("fs", () => ({
-  default: {
-    existsSync: vi.fn().mockReturnValue(false),
-    mkdirSync: vi.fn(),
-    writeFileSync: vi.fn(),
-    readFileSync: vi.fn(),
-  },
-  existsSync: vi.fn().mockReturnValue(false),
-  mkdirSync: vi.fn(),
-  writeFileSync: vi.fn(),
-  readFileSync: vi.fn(),
-}));
-
 import { MemoryStore } from "../../src/memory-store.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 async function createStore(): Promise<MemoryStore> {
   const mockEmbed = createMockEmbeddings();
-  const store = new MemoryStore({ dbPath: "/fake/bench.db" }, mockEmbed);
+  const store = new MemoryStore({ dbPath: ":memory:" }, mockEmbed);
   await store.init();
   return store;
 }

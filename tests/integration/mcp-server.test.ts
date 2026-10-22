@@ -2,20 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createMockEmbeddings } from "../helpers/mock-embeddings.js";
-
-vi.mock("fs", () => ({
-  default: {
-    existsSync: vi.fn().mockReturnValue(false),
-    mkdirSync: vi.fn(),
-    writeFileSync: vi.fn(),
-    readFileSync: vi.fn(),
-  },
-  existsSync: vi.fn().mockReturnValue(false),
-  mkdirSync: vi.fn(),
-  writeFileSync: vi.fn(),
-  readFileSync: vi.fn(),
-}));
-
 import { createServer } from "../../src/server.js";
 import { MemoryStore } from "../../src/memory-store.js";
 
@@ -31,7 +17,7 @@ describe("MCP Server Integration", () => {
     vi.clearAllMocks();
 
     const mockEmbed = createMockEmbeddings();
-    store = new MemoryStore({ dbPath: "/fake/memories.db" }, mockEmbed);
+    store = new MemoryStore({ dbPath: ":memory:" }, mockEmbed);
     await store.init();
 
     const server = createServer(store, "/fake/memories.db");
