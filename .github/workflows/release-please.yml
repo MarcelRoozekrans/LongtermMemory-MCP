@@ -3,6 +3,8 @@ name: Release Please
 on:
   push:
     branches: [main]
+  # Re-publish the version on main when a release's publish failed; a job rerun would replay the old workflow.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -26,7 +28,7 @@ jobs:
 
   publish:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created }}
+    if: ${{ needs.release-please.outputs.release_created || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -49,17 +51,18 @@ jobs:
         run: npm test
 
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        run: npm publish --provenance --access public --loglevel verbose
 
       - name: Upload dist to GitHub Release
-        run: gh release upload ${{ needs.release-please.outputs.tag_name }} ./dist/*
+        run: gh release upload "${TAG_NAME:-longterm-memory-mcp-v$(node -p 'require("./package.json").version')}" ./dist/* --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
 
   publish-mcp-registry:
     name: Publish to MCP Registry
     needs: [release-please, publish]
-    if: ${{ needs.release-please.outputs.release_created }}
+    if: ${{ needs.release-please.outputs.release_created || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
