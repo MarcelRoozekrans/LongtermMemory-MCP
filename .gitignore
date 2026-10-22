@@ -3,6 +3,9 @@ dist/
 data/
 *.db
 *.db-journal
+*.db-wal
+*.db-shm
+!tests/fixtures/*.db
 .env
 
 # Model cache

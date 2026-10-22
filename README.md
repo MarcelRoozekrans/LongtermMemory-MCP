@@ -14,7 +14,7 @@ Inspired by [mcp-mem0](https://github.com/coleam00/mcp-mem0), but runs 100% on y
 
 | Feature | mcp-mem0 | This project |
 |---|---|---|
-| Storage | PostgreSQL / Supabase | **SQLite** (via sql.js WASM) |
+| Storage | PostgreSQL / Supabase | **SQLite** (Node's built-in `node:sqlite`) |
 | Embeddings | OpenAI API | **Local transformer** (all-MiniLM-L6-v2) |
 | Vector search | Cloud vector DB | **In-process cosine similarity** |
 | LLM dependency | OpenAI / OpenRouter / Ollama | **None** |
@@ -135,6 +135,12 @@ By default, memories are stored in a **shared, user-scoped location**:
 
 This means every project and every MCP client shares the same memory pool — you save a memory in one project and it's available everywhere.
 
+Several sessions can use the same database at once. Each server process reads and writes the shared file directly (SQLite in WAL mode), so a memory saved in one session is visible to every other session right away, and no session overwrites what another saved. Requires Node.js 22.13 or later.
+
+Databases from older releases open unchanged. A database from v1.0–1.3, which has no `schema_meta` table, is migrated in place with all its memories kept; a copy named `memories.db.pre-migration-<timestamp>.bak` is written next to it first.
+
+> **Upgrading from 1.4 or earlier:** stop every running session that uses the old version before starting one with the new version. Older releases keep the whole database in memory and rewrite the file on each save, so an old process left running would overwrite what new sessions saved.
+
 ### Per-project database
 
 To isolate memories for a specific project, set the `MEMORY_DB_PATH` environment variable:
@@ -190,7 +196,7 @@ Backups are managed automatically and can also be triggered manually via the `cr
 
 - **Auto-backup**: Triggers every 24 hours or when the memory count reaches a multiple of 100.
 - **Retention**: The last 10 backups are kept; older ones are pruned automatically.
-- **Format**: Each backup is a timestamped directory containing the SQLite database and a JSON export of all memories.
+- **Format**: Each backup is a timestamped directory containing a consistent snapshot of the SQLite database and a JSON export of all memories.
 - **Location**: `~/.longterm-memory-mcp/backups/` by default, or set `MEMORY_BACKUP_PATH`:
 
 ```json
@@ -212,7 +218,7 @@ Backups are managed automatically and can also be triggered manually via the `cr
 1. **Save**: Text is embedded locally using `all-MiniLM-L6-v2` (384-dim vectors) and stored in SQLite alongside the raw content, metadata, tags, importance, and type. Content is deduplicated via SHA-256 hash.
 2. **Search**: Your query is embedded with the same model, then compared against every stored memory using cosine similarity. Results above the threshold are returned ranked by relevance. Accessed memories are reinforced automatically.
 3. **Decay**: Over time, unused memories lose importance based on their type's half-life. Protected and frequently accessed memories resist decay.
-4. **Persist**: The SQLite database is a single file on disk. No background processes, no servers to maintain.
+4. **Persist**: Every change is written straight to the SQLite database on disk, so concurrent sessions share one consistent store. No background processes, no servers to maintain.
 
 The embedding model (~30MB quantized) is downloaded once on first use and cached locally.
 
@@ -284,7 +290,7 @@ Run with `npm run bench`. Results from an in-memory store using mock embeddings 
 ```bash
 npm install          # Install dependencies
 npm run build        # Compile TypeScript
-npm test             # Run all 96 tests
+npm test             # Run all tests
 npm run bench        # Run benchmarks
 npm run test:watch   # Watch mode
 npm run test:coverage # Coverage report

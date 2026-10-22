@@ -1,20 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createMockEmbeddings } from "../helpers/mock-embeddings.js";
-
-// Mock fs so MemoryStore never touches disk
-vi.mock("fs", () => ({
-  default: {
-    existsSync: vi.fn().mockReturnValue(false),
-    mkdirSync: vi.fn(),
-    writeFileSync: vi.fn(),
-    readFileSync: vi.fn(),
-  },
-  existsSync: vi.fn().mockReturnValue(false),
-  mkdirSync: vi.fn(),
-  writeFileSync: vi.fn(),
-  readFileSync: vi.fn(),
-}));
-
 import { MemoryStore } from "../../src/memory-store.js";
 
 describe("MemoryStore", () => {
@@ -25,7 +10,7 @@ describe("MemoryStore", () => {
     vi.clearAllMocks();
     mockEmbed = createMockEmbeddings();
     // Inject mock embedder directly — no fragile vi.mock on embeddings needed
-    store = new MemoryStore({ dbPath: "/fake/memories.db" }, mockEmbed);
+    store = new MemoryStore({ dbPath: ":memory:" }, mockEmbed);
     await store.init();
   });
 

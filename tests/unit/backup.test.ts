@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { DatabaseSync } from "node:sqlite";
 import { BackupManager } from "../../src/backup.js";
+import { MemoryStore } from "../../src/memory-store.js";
+import { createMockEmbeddings } from "../helpers/mock-embeddings.js";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -84,6 +87,24 @@ describe("BackupManager", () => {
       expect(manager.shouldBackup(100)).toBe(true);
       expect(manager.shouldBackup(200)).toBe(true);
       expect(manager.shouldBackup(99)).toBe(false);
+    });
+  });
+
+  describe("with a WAL-mode MemoryStore", () => {
+    it("snapshots changes that are still in the WAL", async () => {
+      const storePath = path.join(tmpDir, "store", "memories.db");
+      const storeBackups = path.join(tmpDir, "store-backups");
+      const store = new MemoryStore({ dbPath: storePath }, createMockEmbeddings(), new BackupManager(storePath, storeBackups));
+      await store.init();
+      await store.save("first");
+      await store.save("second");
+
+      const result = store.createBackup()!;
+      store.close();
+
+      const copy = new DatabaseSync(path.join(result.backupPath, "memories.db"), { readOnly: true });
+      expect(copy.prepare("SELECT COUNT(*) AS n FROM memories").get()).toEqual({ n: 2 });
+      copy.close();
     });
   });
 });
