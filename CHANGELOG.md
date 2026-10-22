@@ -5,6 +5,14 @@
 
 * **release:** include .claude-plugin files in semantic-release versioning ([bffc579](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/bffc579c8d256226482948ba2df270580f1828e1))
 
+## [1.5.0](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/longterm-memory-mcp-v1.4.4...longterm-memory-mcp-v1.5.0) (2026-10-22)
+
+
+### Features
+
+* share one database across sessions with node:sqlite ([f975a15](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/f975a15f331739913701aa13a825307eac4b5828))
+* share one database across sessions with node:sqlite ([b6ca7bb](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/b6ca7bbf7c7d6d44de87825884de6c35610f47cf)), closes [#147](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/issues/147)
+
 ## [1.4.4](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/longterm-memory-mcp-v1.4.3...longterm-memory-mcp-v1.4.4) (2026-04-28)
 
 
