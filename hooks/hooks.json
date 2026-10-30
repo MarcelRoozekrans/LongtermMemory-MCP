@@ -1,0 +1,16 @@
+{
+  "description": "Recall matching long-term memories on the first prompt of a session",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/recall-gate.mjs\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

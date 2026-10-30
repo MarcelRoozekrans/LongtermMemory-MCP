@@ -37,6 +37,8 @@ Persistent, semantic memory across sessions. Two modes: **RECALL** at session st
 
 When invoked at the start of a session:
 
+0. **Check the injected recall** — With the Claude Code plugin, a hook has already searched with the first prompt and added a "Long-term memories that may be relevant" list to the context. Use those lines first; `search_memory` gives the full text of one. Search further only for what the list does not cover.
+
 1. **Detect context** — Determine the current project from:
    - Working directory name or git remote
    - Any CLAUDE.md in the project
