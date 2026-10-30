@@ -270,14 +270,11 @@ export class MemoryStore {
       }
     }
 
-    const scored: SearchResult[] = candidates.map(({ memory, score }) => {
-      const updated = this.applyDecayAndReinforcement(memory);
-      return { memory: updated, score };
-    });
-
-    return scored
+    // Only the results returned count as an access; candidates cut by the limit are left alone.
+    return candidates
       .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+      .slice(0, limit)
+      .map(({ memory, score }): SearchResult => ({ memory: this.applyDecayAndReinforcement(memory), score }));
   }
 
   /**
