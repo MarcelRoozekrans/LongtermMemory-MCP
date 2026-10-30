@@ -107,6 +107,28 @@ describe("MCP Server Integration", () => {
       expect(result.isError).toBe(true);
       expect(getText(result)).toContain("Duplicate");
     });
+
+    it("rejects a secret without echoing it", async () => {
+      const token = "ghp" + "_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8";
+      const result = await client.callTool({
+        name: "save_memory",
+        arguments: { content: `deploy token ${token}` },
+      });
+
+      expect(result.isError).toBe(true);
+      expect(getText(result)).toContain("github-token");
+      expect(getText(result)).not.toContain(token.slice(4));
+    });
+
+    it("previews the stored text, without <private> spans", async () => {
+      const result = await client.callTool({
+        name: "save_memory",
+        arguments: { content: "fact <private>hidden detail</private> kept" },
+      });
+
+      expect(result.isError).toBeFalsy();
+      expect(JSON.parse(getText(result)).preview).toBe("fact  kept");
+    });
   });
 
   // ── search_memory ───────────────────────────────────────────

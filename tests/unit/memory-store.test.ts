@@ -355,4 +355,55 @@ describe("MemoryStore", () => {
       expect(store.count()).toBe(1);
     });
   });
+  // ── content guard ─────────────────────────────────────────
+
+  describe("content guard", () => {
+    // Assembled at runtime so no scanner-flagged literal is committed.
+    const token = "ghp" + "_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8";
+
+    it("stores content with <private> spans removed, and embeds and hashes the stored text", async () => {
+      const memory = await store.save("lesson <private>about my server</private> learned");
+      expect(memory.content).toBe("lesson  learned");
+      expect(mockEmbed.embed).toHaveBeenCalledWith("lesson  learned");
+      expect(store.getById(memory.id)?.content).toBe("lesson  learned");
+      await expect(store.save("lesson  learned")).rejects.toThrow("Duplicate");
+    });
+
+    it("rejects a secret on save before embedding and stores nothing", async () => {
+      await expect(store.save(`use ${token} for the API`)).rejects.toThrow(/github-token/);
+      expect(mockEmbed.embed).not.toHaveBeenCalled();
+      expect(store.count()).toBe(0);
+    });
+
+    it("rejects a secret in metadata values", async () => {
+      await expect(store.save("note", { auth: { token } })).rejects.toThrow(/github-token/);
+      await expect(store.save("note", { list: ["fine", token] })).rejects.toThrow(/github-token/);
+      expect(store.count()).toBe(0);
+    });
+
+    it("rejects a secret in tags", async () => {
+      await expect(store.save("note", {}, [token])).rejects.toThrow(/github-token/);
+    });
+
+    it("rejects a secret on update and keeps the old content", async () => {
+      const saved = await store.save("original");
+      await expect(store.update(saved.id, `now ${token}`)).rejects.toThrow(/github-token/);
+      await expect(store.update(saved.id, undefined, { token })).rejects.toThrow(/github-token/);
+      expect(store.getById(saved.id)?.content).toBe("original");
+    });
+
+    it("strips <private> spans on update", async () => {
+      const saved = await store.save("original");
+      const updated = await store.update(saved.id, "revised <private>detail</private>");
+      expect(updated?.content).toBe("revised");
+    });
+
+    it("uses an injected guard", async () => {
+      const { ContentGuard } = await import("../../src/content-guard.js");
+      const relaxed = new MemoryStore({ dbPath: ":memory:" }, mockEmbed, undefined, new ContentGuard({ disabled: ["all"] }));
+      await relaxed.init();
+      expect((await relaxed.save(token)).content).toBe(token);
+      relaxed.close();
+    });
+  });
 });
