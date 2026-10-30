@@ -4,6 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { MemoryStore } from "./memory-store.js";
 import { BackupManager } from "./backup.js";
 import { createServer } from "./server.js";
+import { contentGuardFromEnv } from "./content-guard.js";
 import os from "os";
 import path from "path";
 
@@ -13,7 +14,7 @@ const BACKUP_PATH = process.env.MEMORY_BACKUP_PATH ?? path.join(path.dirname(DB_
 
 async function main(): Promise<void> {
   const backupManager = new BackupManager(DB_PATH, BACKUP_PATH);
-  const store = new MemoryStore({ dbPath: DB_PATH }, undefined, backupManager);
+  const store = new MemoryStore({ dbPath: DB_PATH }, undefined, backupManager, contentGuardFromEnv());
   await store.init();
 
   const server = createServer(store, DB_PATH);

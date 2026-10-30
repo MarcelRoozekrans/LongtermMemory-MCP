@@ -190,6 +190,45 @@ Memories decay over time to keep the store relevant:
 
 Memory content is hashed (SHA-256) on save. If identical content already exists, the save is rejected with a reference to the existing memory ID. This prevents duplicate entries automatically.
 
+## Content Guard
+
+Memories end up in the database and in its JSON backups, so content is filtered before it is stored:
+
+- **`<private>` spans are removed.** Text inside `<private>…</private>` is never stored, embedded or hashed. An unclosed `<private>` removes everything after it. Content that is empty once the spans are removed is rejected.
+- **Secrets are rejected.** `save_memory` and `update_memory` refuse content, metadata values and tags that look like a secret. The error names the pattern that matched and never the value.
+
+| Pattern | Matches |
+|---|---|
+| `private-key` | PEM / OpenSSH / PGP private key headers (certificates are allowed) |
+| `github-token` | `ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_` and `github_pat_` tokens |
+| `api-key` | `sk-…` style API keys |
+| `aws-access-key` | `AKIA…` / `ASIA…` access key ids |
+| `jwt` | JSON Web Tokens |
+| `slack-token` | `xoxb-`, `xoxp-` and similar Slack tokens |
+| `secret-assignment` | random-looking values after `password=`, `token:`, `secret=`, `api_key=`, `KEY=` and similar. References (`$VAR`, `${{ … }}`), placeholders (`<…>`), calls and plain words are allowed |
+
+Configure it with environment variables:
+
+```json
+{
+  "mcpServers": {
+    "longterm-memory": {
+      "command": "npx",
+      "args": ["longterm-memory-mcp"],
+      "env": {
+        "MEMORY_GUARD_DISABLE": "jwt,slack-token",
+        "MEMORY_GUARD_EXTRA_PATTERNS": "{\"internal-host\": \"\\\\b[a-z0-9-]+\\\\.corp\\\\.example\\\\b\"}"
+      }
+    }
+  }
+}
+```
+
+- `MEMORY_GUARD_DISABLE`: a comma-separated list of pattern names to turn off, or `all` for every built-in pattern. `<private>` spans are removed either way. An unknown name stops the server at startup.
+- `MEMORY_GUARD_EXTRA_PATTERNS`: a JSON object of extra patterns to reject, as name → regular expression.
+
+The guard applies to new saves and updates only. Memories stored before it existed are not rescanned.
+
 ## Backups
 
 Backups are managed automatically and can also be triggered manually via the `create_backup` tool.
