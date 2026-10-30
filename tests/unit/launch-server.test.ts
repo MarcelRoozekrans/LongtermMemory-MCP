@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
+import { pathToFileURL } from "url";
 // Plain JavaScript modules that ship with the plugin, without type declarations.
 // @ts-expect-error no declarations
 import { pinnedPackage } from "../../scripts/plugin-package.mjs";
@@ -9,6 +10,8 @@ import { pinnedPackage } from "../../scripts/plugin-package.mjs";
 import { launch, serverCommand } from "../../scripts/launch-server.mjs";
 
 const root = path.join(__dirname, "../..");
+// ESM needs a file:// URL for an absolute path on Windows.
+const launcherUrl = pathToFileURL(path.join(root, "scripts/launch-server.mjs")).href;
 const plugin = JSON.parse(fs.readFileSync(path.join(root, ".claude-plugin/plugin.json"), "utf8"));
 
 describe("pinned npm package", () => {
@@ -39,7 +42,7 @@ describe("launch", () => {
 
   it("passes stdin and stdout through and exits with the server's exit code", async () => {
     const script = "process.stdin.on('data', d => process.stdout.write('echo:' + d)); process.stdin.on('end', () => process.exit(3));";
-    const launcher = spawn(node, ["-e", `import(${JSON.stringify(path.join(root, "scripts/launch-server.mjs").replace(/\\/g, "/"))}).then(m => m.launch(${JSON.stringify(node)}, ["-e", ${JSON.stringify(script)}]))`]);
+    const launcher = spawn(node, ["-e", `import(${JSON.stringify(launcherUrl)}).then(m => m.launch(${JSON.stringify(node)}, ["-e", ${JSON.stringify(script)}]))`]);
     let out = "";
     launcher.stdout.on("data", (d) => (out += d));
     launcher.stdin.end("ping");
@@ -50,7 +53,7 @@ describe("launch", () => {
 
   it.skipIf(process.platform === "win32")("forwards SIGTERM to the server, so no server is left running", async () => {
     const script = "process.on('SIGTERM', () => { process.stdout.write('got SIGTERM'); process.exit(0); }); setInterval(() => {}, 1000); process.stdout.write('ready');";
-    const launcher = spawn(node, ["-e", `import(${JSON.stringify(path.join(root, "scripts/launch-server.mjs"))}).then(m => m.launch(${JSON.stringify(node)}, ["-e", ${JSON.stringify(script)}]))`]);
+    const launcher = spawn(node, ["-e", `import(${JSON.stringify(launcherUrl)}).then(m => m.launch(${JSON.stringify(node)}, ["-e", ${JSON.stringify(script)}]))`]);
     let out = "";
     await new Promise<void>((resolve) => launcher.stdout.on("data", (d) => ((out += d), out.includes("ready") && resolve())));
     launcher.kill("SIGTERM");

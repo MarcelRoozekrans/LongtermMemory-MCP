@@ -6,6 +6,7 @@
 
 import { spawn } from "node:child_process";
 import fs from "node:fs";
+import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { pinnedPackage } from "./plugin-package.mjs";
 
@@ -14,7 +15,9 @@ export function serverCommand() {
 }
 
 export function launch(command, args) {
-  const child = spawn(command, args, { stdio: "inherit", shell: process.platform === "win32" });
+  // On Windows `npx` is a .cmd shim that only runs through a shell; an absolute path to an executable needs none.
+  const shell = process.platform === "win32" && !path.isAbsolute(command);
+  const child = spawn(command, args, { stdio: "inherit", shell });
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
     process.on(signal, () => child.kill(signal));
   }
