@@ -19,5 +19,10 @@
     "llm"
   ],
   "skills": "./skills/",
-  "mcpServers": "./.mcp.json"
+  "mcpServers": {
+    "longterm-memory": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/launch-server.mjs"]
+    }
+  }
 }
