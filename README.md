@@ -229,6 +229,43 @@ Configure it with environment variables:
 
 The guard applies to new saves and updates only. Memories stored before it existed are not rescanned.
 
+## Automatic Recall
+
+The Claude Code plugin ships a `UserPromptSubmit` hook that recalls memories without the agent having to ask. On the **first prompt of each session** it searches with the prompt text and adds the best matches to the context as a short list:
+
+```
+Long-term memories that may be relevant (longterm-memory; search_memory gives the full text):
+- [2026-10-22 fact] pkill -f <pattern> also matches the agent's own shell … (id 31ece450-…)
+```
+
+- **Once per session:** the hook keeps a marker file per session id in `recall-sessions/` next to the database. Later prompts in that session cost one `node` start, about 30 ms, and no search.
+- **Project:** the hook takes the project name from the session's working directory. A memory that names the project in its content, tags or metadata ranks a little higher. The name is not part of the search text: a short prompt would then match on the project name alone.
+- **Cheap when it misses:** nothing is injected when no memory reaches the threshold, and the block never exceeds the token cap.
+- **Content guard:** a stored memory that the guard rejects, such as one saved before the guard existed, is never injected.
+- **Never blocks a prompt:** errors go to stderr and the prompt continues.
+- **Pinned version:** the hook runs `npx longterm-memory-mcp@<plugin version> recall --hook`, so a cached older copy is never used.
+
+Configure it with environment variables in your Claude Code settings (`env` in `~/.claude/settings.json`). The hook runs in Claude Code's environment, not the MCP server's, so a custom `MEMORY_DB_PATH` has to be set there too.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MEMORY_RECALL_ENABLED` | `true` | `false` turns the hook off |
+| `MEMORY_RECALL_K` | `5` | at most this many memories (1–50) |
+| `MEMORY_RECALL_THRESHOLD` | `0.5` | minimum cosine similarity (-1 to 1) |
+| `MEMORY_RECALL_MAX_TOKENS` | `400` | cap on the injected block, estimated at 4 characters per token |
+| `MEMORY_RECALL_STATE_DIR` | `<database dir>/recall-sessions` | where the once-per-session markers live; markers older than 30 days are removed |
+
+### Recall CLI
+
+The hook calls the `recall` subcommand, which also works on its own:
+
+```bash
+npx longterm-memory-mcp recall "how do we deploy the stack"
+npx longterm-memory-mcp recall --k 3 --threshold 0.4 --project docker "deploy"
+```
+
+It prints the same list the hook injects, or `No relevant memories found.` on stderr. Options: `--k`, `--threshold`, `--max-tokens` and `--project` (default: the current directory's name, `""` for none). It does not create a database that does not exist yet. With `--hook` it reads a Claude Code `UserPromptSubmit` event from stdin and answers with `additionalContext`.
+
 ## Backups
 
 Backups are managed automatically and can also be triggered manually via the `create_backup` tool.
@@ -265,13 +302,22 @@ The embedding model (~30MB quantized) is downloaded once on first use and cached
 
 ```
 src/                           — MCP server source
-  index.ts                     — Entry point (stdio transport, DB/backup path resolution)
+  index.ts                     — Entry point (stdio server, or the `recall` subcommand)
+  paths.ts                     — Database and recall-state path resolution
+  cli.ts                       — `recall` subcommand, standalone and hook mode
+  recall.ts                    — Recall search, project ranking, guard filter, token-capped list
+  recall-session.ts            — Once-per-session markers for the recall hook
   server.ts                    — MCP server factory + 11 tool definitions
   memory-store.ts              — SQLite storage + vector search + decay integration
   embeddings.ts                — Local embedding engine (Xenova/transformers)
   decay.ts                     — DecayEngine (lazy decay, reinforcement, protected tags)
   backup.ts                    — BackupManager (auto-backup, JSON export, pruning)
+  content-guard.ts             — Strips <private> spans, rejects secrets
   types.ts                     — TypeScript interfaces (Memory, Embedder, config types)
+
+hooks/                         — Claude Code plugin hooks
+  hooks.json                   — UserPromptSubmit → recall gate
+  recall-gate.mjs              — Dependency-free gate: runs the recall CLI once per session
 
 skills/                        — Claude Code plugin skill
   long-term-memory/SKILL.md    — Self-contained agent instructions + skill

@@ -252,6 +252,20 @@ describe("MemoryStore", () => {
       expect(results.length).toBeGreaterThan(0);
       expect(results[0].memory.lastAccessed).toBeTruthy();
     });
+
+    it("reinforces only the results it returns, not every candidate above the threshold", async () => {
+      await store.save("first");
+      await store.save("second");
+      await store.save("third");
+      const before = new Map(store.getAll().map((m) => [m.id, m.lastAccessed]));
+      await new Promise((r) => setTimeout(r, 5));
+
+      const [returned] = await store.search("first", 1, -1);
+      const after = new Map(store.getAll().map((m) => [m.id, m.lastAccessed]));
+
+      expect(after.get(returned.memory.id)).not.toBe(before.get(returned.memory.id));
+      for (const [id, accessed] of after) if (id !== returned.memory.id) expect(accessed).toBe(before.get(id));
+    });
   });
 
   // ── searchByType ──────────────────────────────────────────

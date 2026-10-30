@@ -5,14 +5,13 @@ import { MemoryStore } from "./memory-store.js";
 import { BackupManager } from "./backup.js";
 import { createServer } from "./server.js";
 import { contentGuardFromEnv } from "./content-guard.js";
-import os from "os";
+import { resolveDbPath } from "./paths.js";
 import path from "path";
 
-const DEFAULT_DB_DIR = path.join(os.homedir(), ".longterm-memory-mcp");
-const DB_PATH = process.env.MEMORY_DB_PATH ?? path.join(DEFAULT_DB_DIR, "memories.db");
+const DB_PATH = resolveDbPath();
 const BACKUP_PATH = process.env.MEMORY_BACKUP_PATH ?? path.join(path.dirname(DB_PATH), "backups");
 
-async function main(): Promise<void> {
+async function serve(): Promise<void> {
   const backupManager = new BackupManager(DB_PATH, BACKUP_PATH);
   const store = new MemoryStore({ dbPath: DB_PATH }, undefined, backupManager, contentGuardFromEnv());
   await store.init();
@@ -31,7 +30,23 @@ async function main(): Promise<void> {
   });
 }
 
-main().catch((error) => {
+async function recallCommand(args: string[]): Promise<void> {
+  const { runRecall } = await import("./cli.js");
+  process.exitCode = await runRecall(args, {
+    env: process.env,
+    cwd: process.cwd(),
+    readStdin: async () => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+      return Buffer.concat(chunks).toString("utf8");
+    },
+    stdout: (text) => process.stdout.write(text),
+    stderr: (text) => process.stderr.write(text),
+  });
+}
+
+const [command, ...args] = process.argv.slice(2);
+(command === "recall" ? recallCommand(args) : serve()).catch((error) => {
   console.error("Fatal error:", error);
   process.exit(1);
 });
