@@ -60,7 +60,8 @@ Install via the Claude Code marketplace — this sets up both the MCP server and
 ```
 
 This automatically:
-- Configures the MCP server (no manual JSON editing)
+- Configures the MCP server (no manual JSON editing), pinned to the plugin's version: a plugin update also updates the server
+- Adds the [automatic recall](#automatic-recall) hook
 - Installs the `long-term-memory` skill (Claude learns to recall context at session start, save insights after tasks, and deduplicate memories)
 
 ### Use with npx (no install needed)
@@ -68,6 +69,8 @@ This automatically:
 ```bash
 npx longterm-memory-mcp
 ```
+
+npx keeps running the version it cached first and does not look for updates. To move to a new release, name the version, as in `npx -y longterm-memory-mcp@1.6.0`, or use `@latest`, which checks the registry on every start.
 
 ### Or install globally
 
@@ -243,7 +246,7 @@ Long-term memories that may be relevant (longterm-memory; search_memory gives th
 - **Cheap when it misses:** nothing is injected when no memory reaches the threshold, and the block never exceeds the token cap.
 - **Content guard:** a stored memory that the guard rejects, such as one saved before the guard existed, is never injected.
 - **Never blocks a prompt:** errors go to stderr and the prompt continues.
-- **Pinned version:** the hook runs `npx longterm-memory-mcp@<plugin version> recall --hook`, so a cached older copy is never used.
+- **Pinned version:** the hook runs `npx longterm-memory-mcp@<plugin version> recall --hook`, so a cached older copy is never used. The plugin's MCP server is pinned the same way.
 
 Configure it with environment variables in your Claude Code settings (`env` in `~/.claude/settings.json`). The hook runs in Claude Code's environment, not the MCP server's, so a custom `MEMORY_DB_PATH` has to be set there too.
 
@@ -325,7 +328,10 @@ skills/                        — Claude Code plugin skill
 .claude-plugin/                — Plugin & marketplace metadata
   plugin.json                  — Plugin manifest
   marketplace.json             — Marketplace manifest
-.mcp.json                      — Auto-configures MCP server on plugin install
+scripts/                       — Plugin launch helpers (plain Node, no dependencies)
+  launch-server.mjs            — Starts the MCP server pinned to the plugin version
+  plugin-package.mjs           — longterm-memory-mcp@<plugin version>
+.mcp.json                      — MCP server for working on this repo
 .vscode/mcp.json               — VS Code MCP server config
 ```
 
