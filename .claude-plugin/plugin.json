@@ -1,6 +1,6 @@
 {
   "name": "longterm-memory",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Persistent semantic long-term memory for AI agents — fully local, no cloud dependencies",
   "author": {
     "name": "Marcel Roozekrans",
@@ -22,7 +22,9 @@
   "mcpServers": {
     "longterm-memory": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/launch-server.mjs"]
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/scripts/launch-server.mjs"
+      ]
     }
   }
 }
