@@ -14,7 +14,8 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
+import { pinnedPackage } from "../scripts/plugin-package.mjs";
 
 const CHILD_TIMEOUT_MS = 50_000;
 
@@ -38,9 +39,7 @@ export function markSession(env, sessionId) {
 
 /** The CLI pinned to this plugin's version, so a cached older npx copy is never used. */
 export function recallCommand() {
-  const manifest = fileURLToPath(new URL("../.claude-plugin/plugin.json", import.meta.url));
-  const { version } = JSON.parse(fs.readFileSync(manifest, "utf8"));
-  return ["npx", ["-y", `longterm-memory-mcp@${version}`, "recall", "--hook"]];
+  return ["npx", ["-y", pinnedPackage(), "recall", "--hook"]];
 }
 
 /** Passes on the CLI's answer only when it is a hook reply, so an older version that lacks `recall` injects nothing. */
