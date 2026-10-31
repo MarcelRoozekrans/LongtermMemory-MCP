@@ -12,7 +12,7 @@ export function createServer(store: MemoryStore, dbPath?: string): McpServer {
 
   server.tool(
     "save_memory",
-    "Save information to long-term memory. The content will be embedded locally and indexed for semantic search. Use this to store facts, decisions, preferences, or any context worth remembering across sessions.",
+    "Save information to long-term memory. The content will be embedded locally and indexed for semantic search. Use this to store facts, decisions, preferences, or any context worth remembering across sessions. Text inside <private>…</private> is removed before storing; content that looks like a secret (tokens, keys, passwords) is rejected.",
     {
       content: z.string().describe("The text content to store in memory"),
       metadata: z
@@ -47,7 +47,7 @@ export function createServer(store: MemoryStore, dbPath?: string): McpServer {
                 {
                   status: "saved",
                   id: memory.id,
-                  preview: content.length > 120 ? content.slice(0, 120) + "..." : content,
+                  preview: memory.content.length > 120 ? memory.content.slice(0, 120) + "..." : memory.content,
                   tags: memory.tags,
                   importance: memory.importance,
                   memoryType: memory.memoryType,

@@ -5,6 +5,20 @@
 
 * **release:** include .claude-plugin files in semantic-release versioning ([bffc579](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/bffc579c8d256226482948ba2df270580f1828e1))
 
+## [1.6.0](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/longterm-memory-mcp-v1.5.0...longterm-memory-mcp-v1.6.0) (2026-10-30)
+
+
+### Features
+
+* content guard strips &lt;private&gt; spans and rejects secrets before storing ([#166](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/issues/166)) ([df70b31](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/df70b31c9a0750eacafd5865ad2fda70a7d88055)), closes [#162](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/issues/162)
+* recall matching memories on the first prompt of a session ([cca943a](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/cca943abdf4f7a4be0fbb40a05e8b0353338093c)), closes [#161](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/issues/161)
+
+
+### Bug Fixes
+
+* mint a release bot token so release PRs run their required checks ([#170](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/issues/170)) ([e97fabc](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/e97fabc2a88c83003fd362e711ba14c1eba48f97))
+* search reinforces only the memories it returns ([cca943a](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/cca943abdf4f7a4be0fbb40a05e8b0353338093c))
+
 ## [1.5.0](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/longterm-memory-mcp-v1.4.4...longterm-memory-mcp-v1.5.0) (2026-10-22)
 
 

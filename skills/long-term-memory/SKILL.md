@@ -37,6 +37,8 @@ Persistent, semantic memory across sessions. Two modes: **RECALL** at session st
 
 When invoked at the start of a session:
 
+0. **Check the injected recall** — With the Claude Code plugin, a hook has already searched with the first prompt and added a "Long-term memories that may be relevant" list to the context. Use those lines first; `search_memory` gives the full text of one. Search further only for what the list does not cover.
+
 1. **Detect context** — Determine the current project from:
    - Working directory name or git remote
    - Any CLAUDE.md in the project
@@ -103,6 +105,7 @@ When calling `save_memory`, use the structured fields to improve future retrieva
 - **Content**: 1-3 sentences capturing the core insight. Concise and reusable.
 - **Dedup before save**: Always `search_memory` first. If same fact exists, prefer `update_memory`. If `save_memory` rejects with a duplicate content error, use the returned memory ID with `update_memory`.
 - **Never save**: Session-specific temp state, file contents, secrets/credentials, speculative conclusions.
+- **Private details**: Wrap details that must not be stored, such as hostnames, names and internal paths, in `<private>…</private>`; the server removes them before storing. It rejects content that looks like a secret: drop the value and keep the lesson.
 
 ## Structured Search
 
