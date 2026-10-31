@@ -91,5 +91,17 @@ jobs:
       - name: Authenticate via OIDC
         run: ./mcp-publisher login github-oidc
 
+      # npm accepts a publish before it serves the version, and the registry rejects a version npm does not serve yet.
+      - name: Wait until npm serves the version
+        run: |
+          version=$(node -p 'require("./server.json").version')
+          for attempt in $(seq 1 40); do
+            if [ "$(npm view "longterm-memory-mcp@$version" version 2>/dev/null)" = "$version" ]; then exit 0; fi
+            echo "npm does not serve $version yet, attempt $attempt/40"
+            sleep 15
+          done
+          echo "::error::npm still does not serve longterm-memory-mcp@$version after 10 minutes"
+          exit 1
+
       - name: Publish to MCP Registry
         run: ./mcp-publisher publish
