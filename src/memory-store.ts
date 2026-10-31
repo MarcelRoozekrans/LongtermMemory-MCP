@@ -5,6 +5,7 @@ import fs from "fs";
 import { LocalEmbeddings, cosineSimilarity } from "./embeddings.js";
 import { DecayEngine } from "./decay.js";
 import { BackupManager } from "./backup.js";
+import { ContentGuard } from "./content-guard.js";
 import type { Embedder, Memory, MemoryRow, MemoryStoreConfig, SearchResult } from "./types.js";
 
 const MEMORY_COLUMNS =
@@ -24,11 +25,29 @@ export class MemoryStore {
   private decay = new DecayEngine();
   private initialized = false;
   private backup?: BackupManager;
+  private guard: ContentGuard;
 
-  constructor(config?: Partial<MemoryStoreConfig>, embedder?: Embedder, backupManager?: BackupManager) {
+  constructor(
+    config?: Partial<MemoryStoreConfig>,
+    embedder?: Embedder,
+    backupManager?: BackupManager,
+    guard?: ContentGuard,
+  ) {
     this.dbPath = config?.dbPath ?? path.join(process.cwd(), "data", "memories.db");
     this.embeddings = embedder ?? new LocalEmbeddings();
     this.backup = backupManager;
+    this.guard = guard ?? new ContentGuard();
+  }
+
+  /** Rejects secrets in metadata values and tags; they are stored next to the content. */
+  private checkFields(metadata?: Record<string, unknown>, tags?: string[]): void {
+    const visit = (key: string, value: unknown): void => {
+      if (typeof value === "string") this.guard.check(`${key}=${value}`);
+      else if (Array.isArray(value)) value.forEach((v) => visit(key, v));
+      else if (value && typeof value === "object") Object.entries(value).forEach(([k, v]) => visit(k, v));
+    };
+    if (metadata) visit("", metadata);
+    tags?.forEach((tag) => this.guard.check(tag));
   }
 
   private contentHash(content: string): string {
@@ -203,6 +222,8 @@ export class MemoryStore {
     importance: number = 5,
     memoryType: string = "general",
   ): Promise<Memory> {
+    content = this.guard.sanitize(content);
+    this.checkFields(metadata, tags);
     const clampedImportance = Math.max(1, Math.min(10, importance));
     const hash = this.contentHash(content);
 
@@ -249,14 +270,11 @@ export class MemoryStore {
       }
     }
 
-    const scored: SearchResult[] = candidates.map(({ memory, score }) => {
-      const updated = this.applyDecayAndReinforcement(memory);
-      return { memory: updated, score };
-    });
-
-    return scored
+    // Only the results returned count as an access; candidates cut by the limit are left alone.
+    return candidates
       .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+      .slice(0, limit)
+      .map(({ memory, score }): SearchResult => ({ memory: this.applyDecayAndReinforcement(memory), score }));
   }
 
   /**
@@ -278,10 +296,13 @@ export class MemoryStore {
     importance?: number,
     memoryType?: string,
   ): Promise<Memory | null> {
+    const sanitized = content != null ? this.guard.sanitize(content) : undefined;
+    this.checkFields(metadata, tags);
+
     const existing = this.getById(id);
     if (!existing) return null;
 
-    const newContent = content ?? existing.content;
+    const newContent = sanitized ?? existing.content;
     const newMetadata = metadata ?? existing.metadata;
     const newTags = tags ?? existing.tags;
     const newImportance = importance != null ? Math.max(1, Math.min(10, importance)) : existing.importance;
@@ -290,13 +311,13 @@ export class MemoryStore {
 
     let newHash = existing.contentHash;
     let newEmbedding = existing.embedding;
-    const contentChanged = content != null && content !== existing.content;
+    const contentChanged = newContent !== existing.content;
 
     if (contentChanged) {
-      newHash = this.contentHash(content);
+      newHash = this.contentHash(newContent);
       const duplicate = this.findDuplicate(newHash, id);
       if (duplicate) throw new Error(`Duplicate content detected (existing memory: ${duplicate})`);
-      newEmbedding = await this.embeddings.embed(content);
+      newEmbedding = await this.embeddings.embed(newContent);
     }
 
     const changes = this.transaction(() => {
