@@ -5,6 +5,13 @@
 
 * **release:** include .claude-plugin files in semantic-release versioning ([bffc579](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/bffc579c8d256226482948ba2df270580f1828e1))
 
+## [1.6.1](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/longterm-memory-mcp-v1.6.0...longterm-memory-mcp-v1.6.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* pin the plugin's MCP server to the plugin version ([6e9dfad](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/commit/6e9dfad133926105ffb24820cf1a31395062e1c2)), closes [#169](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/issues/169)
+
 ## [1.6.0](https://github.com/MarcelRoozekrans/LongtermMemory-MCP/compare/longterm-memory-mcp-v1.5.0...longterm-memory-mcp-v1.6.0) (2026-10-30)
 
 
