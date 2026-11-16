@@ -389,7 +389,7 @@ npm run test:coverage # Coverage report
 
 ## Contributing
 
-This project uses [Conventional Commits](https://www.conventionalcommits.org/) and [semantic-release](https://github.com/semantic-release/semantic-release) for automated versioning.
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) and [release-please](https://github.com/googleapis/release-please) for automated versioning.
 
 ### Commit message format
 
@@ -427,14 +427,12 @@ Commit messages are validated locally via [commitlint](https://commitlint.js.org
 
 ### Releases
 
-Releases are fully automated. When commits are pushed to `main`:
+Releases are automated with [release-please](https://github.com/googleapis/release-please). When commits are pushed to `main`:
 
-1. [semantic-release](https://github.com/semantic-release/semantic-release) analyzes commit messages
-2. Determines the next version (major / minor / patch)
-3. Generates release notes from commits
-4. Updates `CHANGELOG.md`
-5. Publishes to npm
-6. Creates a GitHub Release
+1. release-please reads the commit messages and opens or updates a release PR with the next version (major / minor / patch) and the `CHANGELOG.md` entry
+2. The release PR also bumps the version in `package.json`, `server.json`, `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`
+3. Merging the release PR creates the GitHub Release and tag
+4. The workflow then publishes to npm and the MCP Registry
 
 No manual version bumps or tags needed.
 
