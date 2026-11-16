@@ -25,10 +25,7 @@
       "matchPackageNames": [
         "@commitlint/cli",
         "@commitlint/config-conventional",
-        "husky",
-        "semantic-release",
-        "@semantic-release/changelog",
-        "@semantic-release/git"
+        "husky"
       ],
       "groupName": "lint and commit tooling"
     },
